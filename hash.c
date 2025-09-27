@@ -51,8 +51,10 @@ hashnode_t* _create_node(char* key, char* val){
         return NULL;
     }
     
-    strncpy_s(node->key, MAX_KEY_LEN, key, MAX_KEY_LEN);
-    strncpy_s(node->val, MAX_VAL_LEN, val, MAX_VAL_LEN);
+    strncpy(node->key, key, MAX_KEY_LEN - 1);
+    node->key[MAX_KEY_LEN - 1] = '\0'; // 当源字符串长度等于或超过限制长度时，不会在目标数组末尾添加 \0
+    strncpy(node->val, val, MAX_VAL_LEN - 1);
+    node->val[MAX_VAL_LEN - 1] = '\0';
     node->next = NULL;
 
     return node;

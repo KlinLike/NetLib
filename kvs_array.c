@@ -1,4 +1,5 @@
 #include "kvstore.h"
+#include <stdlib.h>
 
 // 5 + 2
 // 2个创建删除数据结构的函数 create destroy
@@ -6,7 +7,6 @@
 
 // 创建KV数组
 int kvs_array_create(kvs_array_t* ins){
-    // 参数检查
     if(ins == NULL){
         return -1;
     }
@@ -25,7 +25,6 @@ int kvs_array_create(kvs_array_t* ins){
 
 // 销毁KV数组
 void kvs_array_destroy(kvs_array_t* ins){
-    // 参数检查
     if(ins == NULL){
         return;
     }
@@ -37,7 +36,6 @@ void kvs_array_destroy(kvs_array_t* ins){
 
 // 获取KV数组中的值，找不到会返回NULL
 char* kvs_array_get(kvs_array_t* ins, char* key){
-    // 参数检查
     if(ins == NULL || key == NULL){
         return NULL;
     }
@@ -53,7 +51,6 @@ char* kvs_array_get(kvs_array_t* ins, char* key){
     
 // 设置KV数组中的值，要注意的是这个函数不能更新值
 int kvs_array_set(kvs_array_t* ins,  char* key, char* val){
-    // 参数检查
     if(ins == NULL || key == NULL || val == NULL){
         return -1;
     }
@@ -69,14 +66,15 @@ int kvs_array_set(kvs_array_t* ins,  char* key, char* val){
         return -3;
     }
     memset(copykey, 0, strlen(key) + 1);
-    strncpy_s(copykey, strlen(key) + 1, key, strlen(key));
+    strcpy(copykey, key);
 
     char* copyval = (char*)malloc(sizeof(char) * (strlen(val) + 1));
     if(copyval == NULL){
+        free(copykey);
         return -3;
-    }
+    }1
     memset(copyval, 0, strlen(val) + 1);
-    strncpy_s(copyval, strlen(val) + 1, val, strlen(val));
+    strcpy(copyval, val);
 
     // 找找看中间有没有空的位置可以插入
     int i = 0; // C99标准前不允许使用for循环的初始化语句
@@ -100,7 +98,6 @@ int kvs_array_set(kvs_array_t* ins,  char* key, char* val){
 
 // 删除KV数组中的值，异常返回负数，找不到返回搜索终止下标
 int kvs_array_del(kvs_array_t* ins, char* key){
-    // 参数检查
     if(ins == NULL || key == NULL){
         return -1;
     }
@@ -129,7 +126,6 @@ int kvs_array_del(kvs_array_t* ins, char* key){
 
 // 修改KV数组中的值，异常返回负数，找不到返回搜索终止下标
 int kvs_array_mod(kvs_array_t* ins, char* key, char* val){
-    // 参数检查
     if(ins == NULL || key == NULL || val == NULL){
         return -1;
     }
@@ -142,24 +138,24 @@ int kvs_array_mod(kvs_array_t* ins, char* key, char* val){
         if(ins->table[i].key == NULL){
             continue;
         }
-        if(strcmp(ins->table[i].key, key) == 0){
-            kvs_free(ins->table[i].val);
-            char* copyval = (char*)malloc(sizeof(char) * (strlen(val) + 1));
-            if(copyval == NULL){
-                return -3;
+
+    for (int i = 0; i < ins->count; i++) {
+        if (ins->table[i].key != NULL && strcmp(ins->table[i].key, key) == 0) {
+            char* copyval = (char*)malloc(strlen(val) + 1);
+            if (copyval == NULL) {
+                return -3; // 修改失败，不会更改
             }
-            memset(copyval, 0, strlen(val) + 1);
-            strncpy_s(copyval, strlen(val) + 1, val, strlen(val));
+            strncpy(copyval, val);
+            kvs_free(ins->table[i].val);
             ins->table[i].val = copyval;
             return 0;
         }
-        ++i;
     }
-    return i;
+
+    return i; // 找不到
 }
 
 int kvs_array_exist(kvs_array_t* ins, char* key){
-    // 参数检查
     if(ins == NULL || key == NULL){
         return -1;
     }
