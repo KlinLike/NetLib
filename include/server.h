@@ -1,0 +1,49 @@
+// 服务器所需定义的集合
+// TODO: 处理声明分散问题，最好是每个.c都有对应的.h文件，而不是把声明都堆到这儿然后就找不到
+#ifndef SERVER_H
+#define SERVER_H
+
+#define BUF_LEN 1024
+
+#define WEBSOCKET_ENABLE 1
+#define ENABLE_KVSTORE 0
+
+typedef int (*EVENT_CALLBACK)(int fd);
+// 工作流程：
+// 1. recv_cv接收客户端数据到rbuff
+// 2. 调用msg_handler处理业务逻辑，填充wbuff
+// 3. 调用send_cb发送数据到客户端
+// msg_handler是实现业务逻辑的函数，也是操作哈希、红黑树等数据结构的函数
+typedef int (*msg_handler)(char *msg, int length, char *response);
+
+struct conn {
+    int fd;
+
+    char rbuff[BUF_LEN];
+    int rbuff_len;
+
+    char wbuff[BUF_LEN];
+    int wbuff_len;
+
+    EVENT_CALLBACK send_cb;
+    union {
+        // 只有监听套接字才需要注册accept_cb，其他套接字都注册recv_cb
+        EVENT_CALLBACK recv_cb;
+        EVENT_CALLBACK accept_cb;
+    } action_cb;
+
+    int status;
+
+#if WEBSOCKET_ENABLE
+    // WebSocket的数据帧包括 帧头 + 可选的掩码 + 有效载荷（也就是实际数据）
+    // rbuff存储的是完整数据帧，payload指向实际数据，这样不用每次都计算偏移
+    // 所有客户端到服务器的数据都需要进行掩码处理，所有从服务器到客户端的数据不能进行掩码处理，掩码处理使用XOR运算
+    char* payload;  // 有效载荷
+    char mask[4];   // 掩码
+#endif
+};
+
+// 函数声明
+int reactor_mainloop(unsigned short port_start, int port_count, msg_handler handler);
+
+#endif
