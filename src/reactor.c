@@ -79,8 +79,7 @@ int accept_cb(int fd){
     return 0;
 }
 
-// NOTE:
-// 通过业务逻辑函数 handler / encode 和收发函数 recv_cb / send_cb 分开实现解耦
+// NOTE: 通过业务逻辑函数 handler / encode 和收发函数 recv_cb / send_cb 分开实现解耦
 
 int recv_cb(int fd){
     // 接收数据到rbuff中 -----
@@ -101,13 +100,12 @@ int recv_cb(int fd){
     
     // 记录接收到的数据
     log_debug("Received %d bytes from fd=%d", conn_list[fd].rbuff_len, fd);
-    // 不需要清除conn_list[fd]中的数据，因为fd被重新分配后会覆盖
+    // NOTE: 不需要清除conn_list[fd]中的数据，因为fd被重新分配后会覆盖
 
     // 处理业务逻辑 -----
 #if ENABLE_KVSTORE
     kvs_handle(&conn_list[fd]);
 #endif
-
 #if ENABLE_ECHO
     echo_handle(&conn_list[fd]);
 #endif
