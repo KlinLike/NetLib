@@ -27,6 +27,15 @@ int kvs_init(){
     return 0;
 }
 
+int kvs_handle(struct conn* c){
+    c->wbuff_len = kvs_handler(c->rbuff, c->rbuff_len, c->wbuff);
+    return c->wbuff_len;
+}
+
+int kvs_encode(struct conn* c){
+    // TODO: 发送响应数据到客户端
+}
+
 int main(int argc, char* argv[]){
     int port = 2000;
     // 没传端口号，就用默认的2000

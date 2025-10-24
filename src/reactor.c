@@ -79,7 +79,11 @@ int accept_cb(int fd){
     return 0;
 }
 
+// NOTE:
+// 通过业务逻辑函数 handler / encode 和收发函数 recv_cb / send_cb 分开实现解耦
+
 int recv_cb(int fd){
+    // 接收数据到rbuff中 -----
     memset(conn_list[fd].rbuff, 0, BUF_LEN);
     conn_list[fd].rbuff_len = read(fd, conn_list[fd].rbuff, BUF_LEN);
     if(conn_list[fd].rbuff_len == 0) {
@@ -99,27 +103,42 @@ int recv_cb(int fd){
     log_debug("Received %d bytes from fd=%d", conn_list[fd].rbuff_len, fd);
     // 不需要清除conn_list[fd]中的数据，因为fd被重新分配后会覆盖
 
+    // 处理业务逻辑 -----
 #if ENABLE_KVSTORE
-    // 调用业务逻辑处理函数（KV存储）
-    conn_list[fd].wbuff_len = kvs_handler(
-        conn_list[fd].rbuff, 
-        conn_list[fd].rbuff_len, 
-        conn_list[fd].wbuff
-    );
-#else
-    // ECHO BACK TEST - 简单的回显测试
-    conn_list[fd].wbuff_len = conn_list[fd].rbuff_len;
-    memcpy(conn_list[fd].wbuff, conn_list[fd].rbuff, conn_list[fd].rbuff_len);
+    kvs_handle(&conn_list[fd]);
 #endif
 
+#if ENABLE_ECHO
+    echo_handle(&conn_list[fd]);
+#endif
+#if ENABLE_HTTP
+    http_handle(&conn_list[fd]);
+#endif
+#if ENABLE_WEBSOCKET
+    ws_handle(&conn_list[fd]);
+#endif
+
+    // 设置EPOLLOUT事件，准备发送数据 -----
     set_epoll_event(fd, EPOLLOUT, 0);
     return conn_list[fd].rbuff_len;
 }
 
 int send_cb(int fd){
-
-    // TODO 在这里执行业务逻辑填充数据
-
+    // 准备发送数据 -----
+#if ENABLE_KVSTORE
+    kvs_encode(&conn_list[fd]);
+#endif
+#if ENABLE_ECHO
+    echo_encode(&conn_list[fd]);
+#endif
+#if ENABLE_HTTP
+    http_encode(&conn_list[fd]);
+#endif
+#if ENABLE_WEBSOCKET
+    ws_encode(&conn_list[fd]);
+#endif
+    
+    // 发送数据到客户端 -----
     if(conn_list[fd].wbuff_len == 0) {
         log_warn("Client closed before sending data (fd=%d)", fd);
         close(fd);

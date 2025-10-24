@@ -24,8 +24,8 @@ BUILD_DIR = build
 TARGET = $(BUILD_DIR)/echo_server
 
 # 源文件和目标文件
-SRCS = $(SRC_DIR)/reactor.c $(SRC_DIR)/kvstore.c
-OBJS = $(BUILD_DIR)/reactor.o $(BUILD_DIR)/kvstore.o
+SRCS = $(SRC_DIR)/reactor.c $(SRC_DIR)/kvstore.c $(SRC_DIR)/echo.c
+OBJS = $(BUILD_DIR)/reactor.o $(BUILD_DIR)/kvstore.o $(BUILD_DIR)/echo.o
 
 # 编译选项：设置日志级别
 # -DLOG_LEVEL=0  # DEBUG (显示所有日志)
@@ -46,6 +46,9 @@ $(BUILD_DIR)/reactor.o: $(SRC_DIR)/reactor.c $(INC_DIR)/server.h $(INC_DIR)/logg
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/kvstore.o: $(SRC_DIR)/kvstore.c $(INC_DIR)/kvstore.h $(INC_DIR)/server.h $(INC_DIR)/logger.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/echo.o: $(SRC_DIR)/echo.c $(INC_DIR)/server.h $(INC_DIR)/logger.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
