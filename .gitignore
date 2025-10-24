@@ -1,1 +1,38 @@
+# 编译产物
+build/
+*.o
+*.so
+*.a
+*.out
+
+# 可执行文件
+echo_server
+
+# 编辑器和IDE
 .vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+*.egg
+
+# 调试文件
+*.log
+*.dmp
+core
+vgcore.*
+
+# 临时文件
+*.tmp
+*.bak
+*.orig
