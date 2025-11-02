@@ -8,25 +8,36 @@ NetLib/
 │   ├── *.o            # 目标文件
 │   └── echo_server    # 可执行文件
 ├── docs/              # 文档目录
-│   ├── LICENSE        # 开源协议
-│   ├── README.md      # 项目说明
-│   ├── LOGGER_USAGE.md      # 日志系统使用文档
-│   └── PROJECT_STRUCTURE.md # 本文件
+│   ├── LICENSE                    # 开源协议
+│   ├── Logger_Uessage.md          # 日志系统使用文档
+│   ├── Process_Log.md             # 项目开发日志
+│   ├── Project_Structure.md       # 本文件
+│   └── KVStore-技术规格文档.md    # KVStore技术规格
 ├── include/           # 头文件目录
 │   ├── logger.h       # 日志系统
 │   ├── server.h       # 服务器通用定义
 │   ├── kvstore.h      # KV存储接口
+│   ├── kvs_protocol.h # KVS协议解析器
 │   ├── hash.h         # 哈希表
 │   └── kvs_array.h    # 数组实现
 ├── src/               # 源代码目录
 │   ├── reactor.c      # Reactor事件循环（核心）
+│   ├── echo.c         # Echo服务器实现
 │   ├── kvstore.c      # KV存储主程序
-│   ├── hash.c         # 哈希表实现
-│   ├── kvs_array.c    # 数组实现
-│   └── kvs_rbtree.c   # 红黑树实现
-├── tests/             # 测试工具目录
-│   └── echo_client.py # Echo客户端测试工具
+│   ├── kvs_base.c     # KVS基础功能
+│   ├── kvs_protocol.c # KVS协议解析器实现
+│   ├── kvs_array.c    # 基于数组的KV存储实现
+│   ├── kvs_rbtree.c   # 基于红黑树的KV存储实现
+│   └── hash.c         # 哈希表实现
+├── tests/             # 测试目录
+│   ├── README.md          # 测试文档（统一入口）
+│   ├── test_kvs_array.c   # KVS数组单元测试
+│   ├── test_kvs.sh        # KVS数组测试脚本
+│   ├── test_kvs_parser.c  # KVS协议解析器测试
+│   ├── test_parser.sh     # 协议解析器测试脚本
+│   └── echo_client.py     # Echo客户端测试工具
 ├── Makefile           # 构建脚本
+├── README.md          # 项目主README
 └── .gitignore         # Git忽略规则
 ```
 
@@ -37,10 +48,13 @@ NetLib/
 | 文件 | 说明 | 状态 |
 |------|------|------|
 | `reactor.c` | 基于epoll的Reactor模式事件循环，支持高并发连接 | ✅ 完成 |
+| `echo.c` | Echo服务器实现 | ✅ 完成 |
 | `kvstore.c` | KV存储服务主程序，包含main函数入口 | 🚧 开发中 |
-| `hash.c` | 哈希表数据结构实现 | 📝 待实现 |
-| `kvs_array.c` | 基于数组的KV存储实现 | 📝 待实现 |
+| `kvs_base.c` | KVS基础功能和通用函数 | ✅ 完成 |
+| `kvs_protocol.c` | KVS协议解析器实现（分词、识别、执行） | ✅ 完成 |
+| `kvs_array.c` | 基于数组的KV存储实现 | ✅ 完成 |
 | `kvs_rbtree.c` | 基于红黑树的KV存储实现 | 📝 待实现 |
+| `hash.c` | 哈希表数据结构实现 | 📝 待实现 |
 
 ### 头文件 (include/)
 
@@ -49,13 +63,19 @@ NetLib/
 | `logger.h` | 统一日志系统，支持多级别彩色日志输出 |
 | `server.h` | 服务器通用定义，连接结构体等 |
 | `kvstore.h` | KV存储接口定义 |
-| `hash.h` | 哈希表接口 |
+| `kvs_protocol.h` | KVS协议解析器接口 |
 | `kvs_array.h` | 数组存储接口 |
+| `hash.h` | 哈希表接口 |
 
 ### 测试工具 (tests/)
 
 | 文件 | 说明 |
 |------|------|
+| `README.md` | 测试文档（统一入口，包含所有测试说明） |
+| `test_kvs_array.c` | KVS数组模块的单元测试程序 |
+| `test_kvs.sh` | KVS数组一键编译和测试脚本 |
+| `test_kvs_parser.c` | KVS协议解析器的单元测试程序 |
+| `test_parser.sh` | 协议解析器一键编译和测试脚本 |
 | `echo_client.py` | Python编写的Echo测试客户端，支持单次和连续测试 |
 
 ## 🔨 构建系统
@@ -117,6 +137,18 @@ make run
 python3 tests/echo_client.py 127.0.0.1 8888
 ```
 
+### 4. 运行单元测试
+```bash
+# 测试 KVS 数组模块
+./tests/test_kvs.sh
+
+# 测试 KVS 协议解析器
+./tests/test_parser.sh
+
+# 详细测试说明请参考
+cat tests/README.md
+```
+
 ## 📝 开发指南
 
 ### 添加新的源文件
@@ -150,10 +182,28 @@ reactor.c
   ├── logger.h
   └── sys/epoll.h (系统)
 
+echo.c
+  ├── server.h
+  └── logger.h
+
 kvstore.c
   ├── kvstore.h
   ├── server.h
   └── logger.h
+
+kvs_protocol.c
+  ├── kvstore.h
+  ├── kvs_protocol.h
+  └── kvs_array.h
+
+kvs_array.c
+  └── kvstore.h
+
+kvs_base.c
+  └── kvstore.h
+
+hash.c
+  └── hash.h
 
 logger.h (无依赖)
 server.h (无依赖)
@@ -161,13 +211,13 @@ server.h (无依赖)
 
 ## 📊 文件统计
 
-- 源文件 (.c): 5 个
-- 头文件 (.h): 5 个
-- 测试工具: 1 个
-- 文档: 4 个
+- 源文件 (.c): 8 个
+- 头文件 (.h): 6 个
+- 测试文件: 6 个（包括测试程序、脚本和文档）
+- 文档: 5 个
 
 ---
 
 **维护者**: NetLib 项目组  
-**最后更新**: 2025-10-24
+**最后更新**: 2025-11-02
 
