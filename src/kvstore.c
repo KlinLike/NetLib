@@ -1,18 +1,9 @@
 #include "kvstore.h"
+#include "kvs_protocol.h"
 #include "server.h"
 #include "logger.h"
 #include <stdlib.h>
 #include <stdio.h>
-
-// 释放内存 -> 封装的好处是，如果将来需要改变内存释放的方式，只需要修改这个函数
-void kvs_free(void* ptr){
-    free(ptr);
-}
-
-// 分配内存 -> 封装的好处是，如果将来需要改变内存释放的方式，只需要修改这个函数
-void* kvs_malloc(size_t size){
-    return malloc(size);
-}
 
 // KV存储消息处理函数
 int kvs_handler(char *msg, int length, char *response){
@@ -24,7 +15,16 @@ int kvs_handler(char *msg, int length, char *response){
 // 初始化KV存储
 int kvs_init(){
     // TODO: 初始化哈希表、红黑树等数据结构
-    return 0;
+
+    // 初始化数组
+    global_array = (kvs_array_t*)malloc(sizeof(kvs_array_t));
+    if(global_array == NULL){
+        return KVS_ERR_NOMEM;
+    }
+    kvs_array_create(global_array);
+
+
+    return KVS_OK;
 }
 
 int kvs_handle(struct conn* c){
@@ -35,6 +35,7 @@ int kvs_handle(struct conn* c){
 int kvs_encode(struct conn* c){
     // TODO: 发送响应数据到客户端
 }
+
 
 int main(int argc, char* argv[]){
     int port = 2000;

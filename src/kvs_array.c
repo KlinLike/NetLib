@@ -9,19 +9,19 @@
 // 创建KV数组
 int kvs_array_create(kvs_array_t* ins){
     if(ins == NULL){
-        return -1;
+        return KVS_ERR_PARAM;
     }
     if(ins->table != NULL){
-        return -2;
+        return KVS_ERR_INTERNAL;
     }
     
     ins->table = (kvs_array_item_t*)malloc(sizeof(kvs_array_item_t) * KVS_ARRAY_SIZE);
     if(ins->table == NULL){
-        return -3;
+        return KVS_ERR_NOMEM;
     }
 
     ins->count = 0;
-    return 0;
+    return KVS_OK;
 }
 
 // 销毁KV数组
@@ -56,21 +56,21 @@ int kvs_array_get(kvs_array_t* ins, char* key, char** value){
     return KVS_ERR_NOTFOUND;
 }
     
-// 设置KV数组中的值，要注意的是这个函数不能更新值
+// 设置KV数组中的值
 int kvs_array_set(kvs_array_t* ins,  char* key, char* val){
     if(ins == NULL || key == NULL || val == NULL){
-        return -1;
+        return KVS_ERR_PARAM;
     }
     if(ins->count >= KVS_ARRAY_SIZE){
         // TODO: 扩容？
         // 用total作为已满的判断依据是合理的，因为total是保存的数据总数，而不是有意义数据的最大下标的值
-        return -2; // 已满
+        return KVS_ERR_NOMEM; // 已满
     }
 
     // 创建空间保存key和val
     char* copykey = (char*)malloc(sizeof(char) * (strlen(key) + 1));
     if(copykey == NULL){
-        return -3;
+        return KVS_ERR_NOMEM;
     }
     memset(copykey, 0, strlen(key) + 1);
     strcpy(copykey, key);
@@ -78,29 +78,46 @@ int kvs_array_set(kvs_array_t* ins,  char* key, char* val){
     char* copyval = (char*)malloc(sizeof(char) * (strlen(val) + 1));
     if(copyval == NULL){
         free(copykey);
-        return -3;
+        return KVS_ERR_NOMEM;
     }
     memset(copyval, 0, strlen(val) + 1);
     strcpy(copyval, val);
 
-    // 找找看中间有没有空的位置可以插入
+    // 一次遍历同时完成两个任务：1.检查key是否存在 2.找到可插入的位置
     int i = 0; // C99标准前不允许使用for循环的初始化语句
+    int empty_pos = -1; // 记录第一个空位置
     for (i = 0; i < ins->count; i++){
-        if(ins->table[i].key == NULL){
-            ins->table[i].key = copykey;
-            ins->table[i].val = copyval;
-            // 不增加 count，因为这是填充空洞
-            return KVS_OK;
+        if(empty_pos == -1 && ins->table[i].key == NULL){
+            // 记录第一个空位置
+            empty_pos = i;
+        }
+        if(strcmp(ins->table[i].key, key) == 0){
+            // key已经存在，释放刚分配的内存并返回1
+            free(copykey);
+            free(copyval);
+            return KVS_ERR_EXISTS;
         }
     }
-    // 中间没有空的位置可以插入，需要在末端插入
-    if(i == ins->count && i < KVS_ARRAY_SIZE){
-        ins->table[i].key = copykey;
-        ins->table[i].val = copyval;
+
+    // key不存在，可以插入
+    if(empty_pos != -1){
+        // 中间有空位置，填充空洞
+        ins->table[empty_pos].key = copykey;
+        ins->table[empty_pos].val = copyval;
+        // 不增加 count，因为这是填充空洞
+        return KVS_OK;
+    } else if(ins->count < KVS_ARRAY_SIZE){
+        // 中间没有空位置，在末端插入
+        ins->table[ins->count].key = copykey;
+        ins->table[ins->count].val = copyval;
         ins->count++;
-    } // 这里其实不用判断已满，因为上面已经判断过了
+        return KVS_OK;
+    }
     
-    return 0;
+    // 理论上不会到这里，因为开头已经检查过容量
+    free(copykey);
+    free(copyval);
+    return KVS_ERR_INTERNAL;
 }
 
 // 删除KV数组中的值，异常返回负数，找不到返回KVS_ERR_NOTFOUND
