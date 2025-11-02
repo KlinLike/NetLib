@@ -128,6 +128,9 @@ int kvs_array_del(kvs_array_t* ins, char* key){
     }
     return KVS_ERR_NOTFOUND;
 }
+// NOTE: 删除后的空洞如何处理？
+// 1. 用最后一个元素填补空洞 快速 改变顺序
+// 2. 把后面的速度往前移动 慢 保持顺序
 
 // 修改KV数组中的值，异常返回负数，找不到返回KVS_ERR_NOTFOUND
 int kvs_array_mod(kvs_array_t* ins, char* key, char* val){

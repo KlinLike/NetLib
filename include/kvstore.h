@@ -11,7 +11,7 @@
 #define KVS_IS_HASH     1   // 哈希表
 
 // 配置参数 ----------
-#define KVS_ARRAY_SIZE  100  // 数组默认大小
+#define KVS_ARRAY_SIZE  1024    // 数组默认大小
 
 // 错误码定义 ----------
 #define KVS_OK              0   // 成功
@@ -39,8 +39,8 @@ void* kvs_malloc(size_t size);
 // 函数声明 数组实现----------
 int kvs_array_create(kvs_array_t* ins);
 int kvs_array_destroy(kvs_array_t* ins);
-int kvs_array_get(kvs_array_t* ins, char* key, char** value);
 int kvs_array_set(kvs_array_t* ins, char* key, char* val);
+int kvs_array_get(kvs_array_t* ins, char* key, char** value);
 int kvs_array_mod(kvs_array_t* ins, char* key, char* val);
 int kvs_array_del(kvs_array_t* ins, char* key);
 int kvs_array_exist(kvs_array_t* ins, char* key);
