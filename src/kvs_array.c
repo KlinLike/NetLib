@@ -1,5 +1,6 @@
 #include "kvstore.h"
 #include <stdlib.h>
+#include <string.h>
 
 // 5 + 2
 // 2个创建删除数据结构的函数 create destroy
@@ -24,29 +25,35 @@ int kvs_array_create(kvs_array_t* ins){
 }
 
 // 销毁KV数组
-void kvs_array_destroy(kvs_array_t* ins){
+int kvs_array_destroy(kvs_array_t* ins){
     if(ins == NULL){
-        return;
+        return KVS_ERR_PARAM;
     }
 
     if(ins->table != NULL){
         kvs_free(ins->table);
+        ins->table = NULL;
+        ins->count = 0;
     }
+    return KVS_OK;
 }
 
-// 获取KV数组中的值，找不到会返回NULL
-char* kvs_array_get(kvs_array_t* ins, char* key){
-    if(ins == NULL || key == NULL){
-        return NULL;
+// 获取KV数组中的值，找不到会返回KVS_ERR_NOTFOUND
+int kvs_array_get(kvs_array_t* ins, char* key, char** value){
+    if(ins == NULL || key == NULL || value == NULL){
+        return KVS_ERR_PARAM;
     }
-
+    
     int i = 0;
     for (i = 0; i < ins->count; i++){
         if(ins->table[i].key != NULL && strcmp(ins->table[i].key, key) == 0){
-            return ins->table[i].val;
+            *value = ins->table[i].val;
+            return KVS_OK;
         }
     }
-    return NULL;
+    
+    *value = NULL;
+    return KVS_ERR_NOTFOUND;
 }
     
 // 设置KV数组中的值，要注意的是这个函数不能更新值
@@ -72,7 +79,7 @@ int kvs_array_set(kvs_array_t* ins,  char* key, char* val){
     if(copyval == NULL){
         free(copykey);
         return -3;
-    }1
+    }
     memset(copyval, 0, strlen(val) + 1);
     strcpy(copyval, val);
 
@@ -82,8 +89,8 @@ int kvs_array_set(kvs_array_t* ins,  char* key, char* val){
         if(ins->table[i].key == NULL){
             ins->table[i].key = copykey;
             ins->table[i].val = copyval;
-            ins->count++;
-            return 0;
+            // 不增加 count，因为这是填充空洞
+            return KVS_OK;
         }
     }
     // 中间没有空的位置可以插入，需要在末端插入
@@ -96,18 +103,17 @@ int kvs_array_set(kvs_array_t* ins,  char* key, char* val){
     return 0;
 }
 
-// 删除KV数组中的值，异常返回负数，找不到返回搜索终止下标
+// 删除KV数组中的值，异常返回负数，找不到返回KVS_ERR_NOTFOUND
 int kvs_array_del(kvs_array_t* ins, char* key){
     if(ins == NULL || key == NULL){
-        return -1;
+        return KVS_ERR_PARAM;
     }
 
     if(ins->count == 0){
-        return -1; // 这里必须检查，不然等下可能会返回 i = 0
+        return KVS_ERR_NOTFOUND;
     }
 
-    int i = 0;
-    while (i < ins->count){
+    for (int i = 0; i < ins->count; i++){
         if(ins->table[i].key == NULL){
             continue;
         }
@@ -117,52 +123,46 @@ int kvs_array_del(kvs_array_t* ins, char* key){
             kvs_free(ins->table[i].val);
             ins->table[i].val = NULL;
             ins->count--;
-            return 0;
+            return KVS_OK;
         }
-        ++i;
     }
-    return i;
+    return KVS_ERR_NOTFOUND;
 }
 
-// 修改KV数组中的值，异常返回负数，找不到返回搜索终止下标
+// 修改KV数组中的值，异常返回负数，找不到返回KVS_ERR_NOTFOUND
 int kvs_array_mod(kvs_array_t* ins, char* key, char* val){
     if(ins == NULL || key == NULL || val == NULL){
-        return -1;
+        return KVS_ERR_PARAM;
     }
     if(ins->count == 0){
-        return -2;
+        return KVS_ERR_NOTFOUND;
     }
-
-    int i = 0;
-    while (i < ins->count){
-        if(ins->table[i].key == NULL){
-            continue;
-        }
 
     for (int i = 0; i < ins->count; i++) {
         if (ins->table[i].key != NULL && strcmp(ins->table[i].key, key) == 0) {
             char* copyval = (char*)malloc(strlen(val) + 1);
             if (copyval == NULL) {
-                return -3; // 修改失败，不会更改
+                return KVS_ERR_NOMEM;
             }
-            strncpy(copyval, val);
+            strcpy(copyval, val);
             kvs_free(ins->table[i].val);
             ins->table[i].val = copyval;
-            return 0;
+            return KVS_OK;
         }
     }
 
-    return i; // 找不到
+    return KVS_ERR_NOTFOUND;
 }
 
 int kvs_array_exist(kvs_array_t* ins, char* key){
     if(ins == NULL || key == NULL){
-        return -1;
+        return KVS_ERR_PARAM;
     }
 
-    char* val = kvs_array_get(ins, key);
-    if (val == NULL){
-        return 1;
+    char* val = NULL;
+    int ret = kvs_array_get(ins, key, &val);
+    if (ret == KVS_OK){
+        return KVS_OK;  // 0 表示存在
     }
-    return 0;
+    return KVS_ERR_NOTFOUND;  // -3 表示不存在
 }
