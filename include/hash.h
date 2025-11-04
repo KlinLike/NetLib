@@ -1,6 +1,7 @@
 #ifndef _HASH_H_
 #define _HASH_H_
 
+#include "kvstore.h"
 #include <pthread.h> // 因为 hashtable_t 结构体中包含了 pthread_mutex_t
 
 // --- 公共宏定义 ---
@@ -27,61 +28,14 @@ typedef struct hashtable_s {
 } hashtable_t;
 
 
-// --- 公共函数声明 (API) ---
-
-/**
- * @brief 初始化一个哈希表。
- * @param hash 指向要初始化的哈希表结构体的指针。
- * @return 成功返回0，失败返回-1。
- */
-int init_hashtable(hashtable_t *hash);
-
-/**
- * @brief 销毁哈希表并释放所有相关资源。
- * @param hash 指向要销毁的哈希表的指针。
- */
-void dest_hashtable(hashtable_t *hash);
-
-/**
- * @brief 向哈希表中插入一个键值对。
- * @param hash 哈希表指针。
- * @param key 要插入的键。
- * @param value 要插入的值。
- * @return 成功返回0；如果键已存在，返回1；失败返回-1。
- */
-int put_kv_hashtable(hashtable_t *hash, char *key, char *value);
-
-/**
- * @brief 从哈希表中获取一个键对应的值。
- * @param hash 哈希表指针。
- * @param key 要查找的键。
- * @return 成功返回指向值的指针；如果键不存在，返回NULL。
- * @warning 返回的指针指向哈希表内部内存，请勿修改或释放它。
- */
-char* get_kv_hashtable(hashtable_t *hash, char *key);
-
-/**
- * @brief 从哈希表中删除一个键值对。
- * @param hash 哈希表指针。
- * @param key 要删除的键。
- * @return 成功返回0；如果键不存在或发生其他错误，返回负值。
- */
-int delete_kv_hashtable(hashtable_t *hash, char *key);
-
-/**
- * @brief 获取哈希表中键值对的总数。
- * @param hash 哈希表指针。
- * @return 当前存储的键值对数量。
- */
-int count_kv_hashtable(hashtable_t *hash);
-
-/**
- * @brief 检查一个键是否存在于哈希表中。
- * @param hash 哈希表指针。
- * @param key 要检查的键。
- * @return 如果存在，返回1；如果不存在，返回0。
- */
-int exist_kv_hashtable(hashtable_t *hash, char *key);
+// --- 公共函数声明 (KVStore 对齐接口) ---
+int kvs_hash_create(hashtable_t *hash);
+int kvs_hash_destroy(hashtable_t *hash);
+int kvs_hash_set(hashtable_t *hash, char *key, char *value);
+int kvs_hash_get(hashtable_t *hash, char *key, char **value);
+int kvs_hash_mod(hashtable_t *hash, char *key, char *value);
+int kvs_hash_del(hashtable_t *hash, char *key);
+int kvs_hash_exist(hashtable_t *hash, char *key);
 
 
 #endif // _HASH_H_
