@@ -2,6 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define KVS_ARRAY_SIZE 1024
+
 // 5 + 2
 // 2个创建删除数据结构的函数 create destroy
 // 5个操作数据的函数 get set mod del exist

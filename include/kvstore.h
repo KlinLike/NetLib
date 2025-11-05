@@ -20,9 +20,6 @@
 #define KVS_IS_RBTREE   1   // 红黑树
 #define KVS_IS_HASH     1   // 哈希表
 
-// ========== 配置参数 ==========
-#define KVS_ARRAY_SIZE  1024    // 数组默认大小
-
 // ========== 错误码定义 ==========
 #define KVS_OK              0   // 成功
 #define KVS_ERR_PARAM      -1   // 参数错误
