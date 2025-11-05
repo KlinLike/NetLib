@@ -4,6 +4,10 @@
 
 #define HASH_DEFAULT_SLOTS 1024
 
+// ========== 全局变量 ==========
+hashtable_t global_hash_instance;
+hashtable_t* global_hash = &global_hash_instance;
+
 /*
  * 哈希表节点：链式拉链中的一个元素，保存键和值的副本
  * NOTE: 仅在本文件内声明，保证 hash.h 暴露的 hashtable_t 保持不透明，便于后续替换实现
