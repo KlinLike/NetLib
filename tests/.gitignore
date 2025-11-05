@@ -1,0 +1,17 @@
+# 测试编译产物
+test_kvs_all
+test_protocol
+
+# 其他可执行文件
+test_*
+!test_*.c
+!test_*.sh
+!test_*.py
+
+# 临时文件
+*.o
+*.log
+*.tmp
+core
+core.*
+
