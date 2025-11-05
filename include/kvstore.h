@@ -63,4 +63,44 @@ int kvs_array_mod(kvs_array_t* ins, char* key, char* val);
 int kvs_array_del(kvs_array_t* ins, char* key);
 int kvs_array_exist(kvs_array_t* ins, char* key);
 
+// ========== 红黑树相关类型和函数声明 (定义在 kvs_rbtree.c) ==========
+#if KVS_IS_RBTREE
+
+// 前向声明
+typedef struct rbtree_s kvs_rbtree_t;
+
+// 全局变量声明
+extern kvs_rbtree_t* global_rbtree;
+
+// 红黑树 KVS 操作函数
+int kvs_rbtree_create(kvs_rbtree_t *inst);
+int kvs_rbtree_destroy(kvs_rbtree_t *inst);
+int kvs_rbtree_set(kvs_rbtree_t *inst, char *key, char *value);
+int kvs_rbtree_get(kvs_rbtree_t *inst, char *key, char **value);
+int kvs_rbtree_mod(kvs_rbtree_t *inst, char *key, char *value);
+int kvs_rbtree_del(kvs_rbtree_t *inst, char *key);
+int kvs_rbtree_exist(kvs_rbtree_t *inst, char *key);
+
+#endif // KVS_IS_RBTREE
+
+// ========== 哈希表相关类型和函数声明 (定义在 hash.c) ==========
+#if KVS_IS_HASH
+
+// 前向声明
+typedef struct hashtable_s hashtable_t;
+
+// 全局变量声明
+extern hashtable_t* global_hash;
+
+// 哈希表 KVS 操作函数（在 hash.h 中声明）
+int kvs_hash_create(hashtable_t *hash);
+int kvs_hash_destroy(hashtable_t *hash);
+int kvs_hash_set(hashtable_t *hash, char *key, char *value);
+int kvs_hash_get(hashtable_t *hash, char *key, char **value);
+int kvs_hash_mod(hashtable_t *hash, char *key, char *value);
+int kvs_hash_del(hashtable_t *hash, char *key);
+int kvs_hash_exist(hashtable_t *hash, char *key);
+
+#endif // KVS_IS_HASH
+
 #endif

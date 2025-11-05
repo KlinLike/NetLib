@@ -109,44 +109,84 @@ int kvs_executor_command(int cmd, char** tokens, char* response){
             }
             break;
         case KVS_CMD_RSET:
-            // TODO
-            sprintf(response, "ERROR: Not implemented");
+            ret = kvs_rbtree_set(global_rbtree, key, value);
+            if (ret == KVS_OK) {
+                sprintf(response, "OK");
+            } else {
+                sprintf(response, "%s", kvs_strerror(ret));
+            }
             break;
         case KVS_CMD_RGET:
-            // TODO
-            sprintf(response, "ERROR: Not implemented");
+            ret = kvs_rbtree_get(global_rbtree, key, &value);
+            if (ret == KVS_OK) {
+                sprintf(response, "OK %s", value);
+            } else {
+                sprintf(response, "%s", kvs_strerror(ret));
+            }
             break;
         case KVS_CMD_RDEL:
-            // TODO
-            sprintf(response, "ERROR: Not implemented");
+            ret = kvs_rbtree_del(global_rbtree, key);
+            if (ret == KVS_OK) {
+                sprintf(response, "OK");
+            } else {
+                sprintf(response, "%s", kvs_strerror(ret));
+            }
             break;
         case KVS_CMD_RMOD:
-            // TODO
-            sprintf(response, "ERROR: Not implemented");
+            ret = kvs_rbtree_mod(global_rbtree, key, value);
+            if (ret == KVS_OK) {
+                sprintf(response, "OK");
+            } else {
+                sprintf(response, "%s", kvs_strerror(ret));
+            }
             break;
         case KVS_CMD_REXIST:
-            // TODO
-            sprintf(response, "ERROR: Not implemented");
+            ret = kvs_rbtree_exist(global_rbtree, key);
+            if (ret == KVS_OK) {
+                sprintf(response, "OK");
+            } else {
+                sprintf(response, "%s", kvs_strerror(ret));
+            }
             break;
         case KVS_CMD_HSET:
-            // TODO
-            sprintf(response, "ERROR: Not implemented");
+            ret = kvs_hash_set(global_hash, key, value);
+            if (ret == KVS_OK) {
+                sprintf(response, "OK");
+            } else {
+                sprintf(response, "%s", kvs_strerror(ret));
+            }
             break;
         case KVS_CMD_HGET:
-            // TODO
-            sprintf(response, "ERROR: Not implemented");
+            ret = kvs_hash_get(global_hash, key, &value);
+            if (ret == KVS_OK) {
+                sprintf(response, "OK %s", value);
+            } else {
+                sprintf(response, "%s", kvs_strerror(ret));
+            }
             break;
         case KVS_CMD_HDEL:
-            // TODO
-            sprintf(response, "ERROR: Not implemented");
+            ret = kvs_hash_del(global_hash, key);
+            if (ret == KVS_OK) {
+                sprintf(response, "OK");
+            } else {
+                sprintf(response, "%s", kvs_strerror(ret));
+            }
             break;
         case KVS_CMD_HMOD:
-            // TODO
-            sprintf(response, "ERROR: Not implemented");
+            ret = kvs_hash_mod(global_hash, key, value);
+            if (ret == KVS_OK) {
+                sprintf(response, "OK");
+            } else {
+                sprintf(response, "%s", kvs_strerror(ret));
+            }
             break;
         case KVS_CMD_HEXIST:
-            // TODO
-            sprintf(response, "ERROR: Not implemented");
+            ret = kvs_hash_exist(global_hash, key);
+            if (ret == KVS_OK) {
+                sprintf(response, "OK");
+            } else {
+                sprintf(response, "%s", kvs_strerror(ret));
+            }
             break;
         default:
             sprintf(response, "ERROR: Unknown command");

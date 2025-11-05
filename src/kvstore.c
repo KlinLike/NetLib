@@ -14,15 +14,30 @@ int kvs_handler(char *msg, int length, char *response){
 
 // 初始化KV存储
 int kvs_init(){
-    // TODO: 初始化哈希表、红黑树等数据结构
-
     // 初始化数组
+#if KVS_IS_ARRAY
     global_array = (kvs_array_t*)malloc(sizeof(kvs_array_t));
     if(global_array == NULL){
         return KVS_ERR_NOMEM;
-    }
-    kvs_array_create(global_array);
+        }
+        kvs_array_create(global_array);
+#endif
 
+    // 初始化红黑树
+#if KVS_IS_RBTREE
+    int ret = kvs_rbtree_create(global_rbtree);
+    if(ret != KVS_OK){
+        return ret;
+    }
+#endif
+
+    // 初始化哈希表
+#if KVS_IS_HASH
+    ret = kvs_hash_create(global_hash);
+    if(ret != KVS_OK){
+        return ret;
+    }
+#endif
 
     return KVS_OK;
 }
