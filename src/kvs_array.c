@@ -91,7 +91,7 @@ int kvs_array_set(kvs_array_t* ins,  char* key, char* val){
             // 记录第一个空位置
             empty_pos = i;
         }
-        if(strcmp(ins->table[i].key, key) == 0){
+        if(ins->table[i].key != NULL && strcmp(ins->table[i].key, key) == 0){
             // key已经存在，释放刚分配的内存并返回1
             free(copykey);
             free(copyval);
