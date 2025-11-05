@@ -27,15 +27,6 @@ typedef struct hashtable_s {
     
 } hashtable_t;
 
-
-// --- 公共函数声明 (KVStore 对齐接口) ---
-int kvs_hash_create(hashtable_t *hash);
-int kvs_hash_destroy(hashtable_t *hash);
-int kvs_hash_set(hashtable_t *hash, char *key, char *value);
-int kvs_hash_get(hashtable_t *hash, char *key, char **value);
-int kvs_hash_mod(hashtable_t *hash, char *key, char *value);
-int kvs_hash_del(hashtable_t *hash, char *key);
-int kvs_hash_exist(hashtable_t *hash, char *key);
-
+// --- 函数声明已移至 kvstore.h ---
 
 #endif // _HASH_H_

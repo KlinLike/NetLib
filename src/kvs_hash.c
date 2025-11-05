@@ -1,5 +1,5 @@
-#include "hash.h"
-
+#include "kvstore.h"
+#include "kvs_hash.h"
 #include <string.h>
 
 #define HASH_DEFAULT_SLOTS 1024
