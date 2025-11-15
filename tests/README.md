@@ -268,4 +268,27 @@ Array默认容量为1024，在 `include/kvstore.h` 中修改：
 
 **Happy Testing! 🎉**
 
+## 🔧 Reactor 测试（Echo）
+
+### 目的
+- 独立验证 Reactor 事件循环的“接收→处理→发送”链路是否正常（不依赖 KVS 协议与存储引擎）。
+
+### 一键使用脚本
+- 构建：`./tests/test_reactor.sh build`
+- 运行：`./tests/test_reactor.sh run`（端口 `8888`）
+- 清理：`./tests/test_reactor.sh clean`
+
+### 手动测试（本地/远程）
+- 本地：`python3 tests/echo_client.py 127.0.0.1 8888 "Hello Reactor"`
+- 远程：`python3 tests/echo_client.py <服务器IP> 8888 "Hello Reactor"`
+- 备用工具：`nc <服务器IP> 8888` 或 `telnet <服务器IP> 8888`，输入文本后回车
+
+### 预期输出
+- 客户端显示连接成功并收到与发送内容一致的回显（含结尾换行符）。
+- 服务器日志显示启动、监听、等待连接、收发数据等事件（取决于 `LOG_LEVEL`）。
+
+### 说明
+- 服务器入口：`tests/test_reactor.c` 使用最小 `msg_handler` 将收到的数据原样拷贝到响应缓冲区并返回长度（`/root/MyGithub/NetLib/tests/test_reactor.c:7-17`, `/root/MyGithub/NetLib/tests/test_reactor.c:19-25`）。
+- 运行端口默认 `8888`，可在脚本中扩展支持自定义端口（当前固定）。
+
 *最后更新：2024-11-05*
