@@ -4,12 +4,84 @@
 #include "logger.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+
+#define KVS_MAX_TOKENS 8
+
+// 根据命令类型获取最小参数个数（含命令关键字）
+static int kvs_required_tokens(int cmd){
+    switch(cmd){
+        case KVS_CMD_SET:
+        case KVS_CMD_MOD:
+        case KVS_CMD_RSET:
+        case KVS_CMD_RMOD:
+        case KVS_CMD_HSET:
+        case KVS_CMD_HMOD:
+            return 3;
+        default:
+            return 2;
+    }
+}
+
+// 统一追加 CRLF，保持协议响应格式
+static int kvs_append_crlf(char *response){
+    size_t len = strlen(response);
+    if(len + 2 >= BUF_LEN){
+        return KVS_ERR_INTERNAL;
+    }
+    response[len] = '\r';
+    response[len + 1] = '\n';
+    response[len + 2] = '\0';
+    return (int)(len + 2);
+}
 
 // KV存储消息处理函数
 int kvs_handler(char *msg, int length, char *response){
-    // TODO: 实现KV存储的具体业务逻辑
-    // 目前为空，后续可以添加 SET/GET/DEL 等命令处理
-    return 0;
+    if(msg == NULL || response == NULL || length <= 0){
+        snprintf(response, BUF_LEN, "%s", kvs_strerror(KVS_ERR_PARAM));
+        return kvs_append_crlf(response);
+    }
+
+    // 复制请求数据到本地缓冲区，避免原始数据被 tokenizer 修改
+    int copy_len = length;
+    if(copy_len >= BUF_LEN){
+        copy_len = BUF_LEN - 1;
+    }
+
+    char buffer[BUF_LEN];
+    memset(buffer, 0, sizeof(buffer));
+    memcpy(buffer, msg, copy_len);
+    buffer[copy_len] = '\0';
+
+    // 解析 token
+    char *tokens[KVS_MAX_TOKENS] = {0};
+    int token_count = kvs_tokenizer(buffer, tokens);
+    if(token_count <= 0){
+        snprintf(response, BUF_LEN, "%s", kvs_strerror(KVS_ERR_PARAM));
+        return kvs_append_crlf(response);
+    }
+
+    // 识别命令并校验参数数量
+    int cmd = kvs_parser_command(tokens);
+    if(cmd < KVS_CMD_START || cmd >= KVS_CMD_COUNT){
+        snprintf(response, BUF_LEN, "ERROR Unknown command");
+        return kvs_append_crlf(response);
+    }
+
+    if(token_count < kvs_required_tokens(cmd)){
+        snprintf(response, BUF_LEN, "ERROR Missing arguments");
+        return kvs_append_crlf(response);
+    }
+
+    memset(response, 0, BUF_LEN);
+    // 执行命令填充响应
+    int ret = kvs_executor_command(cmd, tokens, response);
+    if(ret != KVS_OK){
+        // kvs_executor_command已填充response，此处仅确保带有CRLF
+        return kvs_append_crlf(response);
+    }
+
+    return kvs_append_crlf(response);
 }
 
 // 初始化KV存储
@@ -48,7 +120,7 @@ int kvs_handle(struct conn* c){
 }
 
 int kvs_encode(struct conn* c){
-    // TODO: 发送响应数据到客户端
+    return c->wbuff_len;
 }
 
 
@@ -59,7 +131,7 @@ int main(int argc, char* argv[]){
         port = atoi(argv[1]);
     }
 
-    log_server("Starting echo server on port %d...", port);
+    log_server("Starting kvstore server on port %d...", port);
     
     // 初始化KV存储
     // kvs_init();
