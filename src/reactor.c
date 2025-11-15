@@ -14,6 +14,7 @@
 
 struct conn conn_list[CONN_MAX];
 int epfd = 0;
+static msg_handler global_handler = NULL;
 
 // 函数声明
 int accept_cb(int fd);
@@ -102,40 +103,32 @@ int recv_cb(int fd){
     log_debug("Received %d bytes from fd=%d", conn_list[fd].rbuff_len, fd);
     // NOTE: 不需要清除conn_list[fd]中的数据，因为fd被重新分配后会覆盖
 
-    // 处理业务逻辑 -----
-#if ENABLE_KVSTORE
-    kvs_handle(&conn_list[fd]);
-#endif
-#if ENABLE_ECHO
-    echo_handle(&conn_list[fd]);
-#endif
-#if ENABLE_HTTP
-    http_handle(&conn_list[fd]);
-#endif
-#if ENABLE_WEBSOCKET
-    ws_handle(&conn_list[fd]);
-#endif
+    // 清空写缓冲区
+    memset(conn_list[fd].wbuff, 0, BUF_LEN);
+    conn_list[fd].wbuff_len = 0;
 
-    // 设置EPOLLOUT事件，准备发送数据 -----
-    set_epoll_event(fd, EPOLLOUT, 0);
-    return conn_list[fd].rbuff_len;
+    if (global_handler != NULL) {
+        int ret = global_handler(conn_list[fd].rbuff, conn_list[fd].rbuff_len,
+                                 conn_list[fd].wbuff);
+        if (ret < 0) {
+            log_error("Handler returned error (fd=%d, ret=%d)", fd, ret);
+            close(fd);
+            epoll_ctl(epfd, EPOLL_CTL_DEL, fd, NULL);
+            return ret;
+        }
+        conn_list[fd].wbuff_len = ret;
+    } else {
+        log_warn("No message handler registered, skip processing (fd=%d)", fd);
+    }
+
+    if (conn_list[fd].wbuff_len > 0) {
+        set_epoll_event(fd, EPOLLOUT, 0);
+    }
+
+    return conn_list[fd].wbuff_len;
 }
 
 int send_cb(int fd){
-    // 准备发送数据 -----
-#if ENABLE_KVSTORE
-    kvs_encode(&conn_list[fd]);
-#endif
-#if ENABLE_ECHO
-    echo_encode(&conn_list[fd]);
-#endif
-#if ENABLE_HTTP
-    http_encode(&conn_list[fd]);
-#endif
-#if ENABLE_WEBSOCKET
-    ws_encode(&conn_list[fd]);
-#endif
-    
     // 发送数据到客户端 -----
     if(conn_list[fd].wbuff_len == 0) {
         log_warn("Client closed before sending data (fd=%d)", fd);
@@ -180,21 +173,13 @@ int init_server(unsigned short port){
     return sockfd;
 }
 
-#if ENABLE_KVSTORE
-static msg_handler kvs_handler;
-#endif
-
 int reactor_mainloop(unsigned short port_start, int port_count, msg_handler handler){
     if(port_start < 0 || port_count <= 0){
         log_error("Invalid port range(%d, %d)", port_start, port_start + port_count);
         return -1;
     }
 
-#if ENABLE_KVSTORE
-    kvs_handler = handler;
-#else
-    (void)handler;  // 避免未使用参数警告
-#endif
+    global_handler = handler;
 
     epfd = epoll_create(1);
     if(epfd < 0) {
@@ -232,7 +217,8 @@ int reactor_mainloop(unsigned short port_start, int port_count, msg_handler hand
             log_debug("Event on fd=%d, events=0x%x", fd, events[i].events);
             
             if(events[i].events & EPOLLIN){
-                // action_cb是union，可能是accept_cb或recv_cb
+                // action_cb是union，用哪个成员名访问都一样
+                // TODO: 优化提升可读性，避免accept和read混淆
                 if(conn_list[fd].action_cb.accept_cb != NULL){
                     conn_list[fd].action_cb.accept_cb(fd);
                 }

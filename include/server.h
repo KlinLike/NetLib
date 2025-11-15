@@ -5,10 +5,10 @@
 
 #define BUF_LEN 1024
 
-#define ENABLE_HTTP			0
-#define ENABLE_WEBSOCKET	0
-#define ENABLE_KVSTORE		0
-#define ENABLE_ECHO			1
+#define ENABLE_HTTP         0
+#define ENABLE_WEBSOCKET    0
+#define ENABLE_KVSTORE      1
+#define ENABLE_ECHO         0
 
 typedef int (*EVENT_CALLBACK)(int fd);
 // 工作流程：
