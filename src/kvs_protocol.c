@@ -3,6 +3,9 @@
 #include <string.h>
 #include <stdio.h>
 
+// NOTE: 
+// 协议类型并不是性能的决定因素，过早优化不如先解决核心问题
+
 // ----- 协议解析器实现 -----
 /* NOTE:
  * strtok不会分配新内存,而是直接修改原字符串:
@@ -57,6 +60,7 @@ int kvs_parser_command(char** tokens){
     return KVS_ERR_PARAM;
 }
 
+// TODO: 命令错误要怎么处理？
 // 命令执行器
 int kvs_executor_command(int cmd, char** tokens, char* response){
     if(cmd < KVS_CMD_START || cmd >= KVS_CMD_COUNT){
