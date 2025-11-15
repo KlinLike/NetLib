@@ -291,4 +291,4 @@ Array默认容量为1024，在 `include/kvstore.h` 中修改：
 - 服务器入口：`tests/test_reactor.c` 使用最小 `msg_handler` 将收到的数据原样拷贝到响应缓冲区并返回长度（`/root/MyGithub/NetLib/tests/test_reactor.c:7-17`, `/root/MyGithub/NetLib/tests/test_reactor.c:19-25`）。
 - 运行端口默认 `8888`，可在脚本中扩展支持自定义端口（当前固定）。
 
-*最后更新：2024-11-05*
+*最后更新：2025-11-16*
