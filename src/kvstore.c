@@ -86,18 +86,24 @@ int kvs_handler(char *msg, int length, char *response){
 
 // 初始化KV存储
 int kvs_init(){
+    int ret = KVS_OK;
+
     // 初始化数组
 #if KVS_IS_ARRAY
     global_array = (kvs_array_t*)malloc(sizeof(kvs_array_t));
     if(global_array == NULL){
         return KVS_ERR_NOMEM;
-        }
-        kvs_array_create(global_array);
+    }
+    memset(global_array, 0, sizeof(kvs_array_t));
+    ret = kvs_array_create(global_array);
+    if(ret != KVS_OK){
+        return ret;
+    }
 #endif
 
     // 初始化红黑树
 #if KVS_IS_RBTREE
-    int ret = kvs_rbtree_create(global_rbtree);
+    ret = kvs_rbtree_create(global_rbtree);
     if(ret != KVS_OK){
         return ret;
     }
@@ -132,9 +138,13 @@ int main(int argc, char* argv[]){
     }
 
     log_server("Starting kvstore server on port %d...", port);
-    
+
     // 初始化KV存储
-    // kvs_init();
+    int init_ret = kvs_init();
+    if(init_ret != KVS_OK){
+        log_error("KVStore init failed: %s", kvs_strerror(init_ret));
+        return -1;
+    }
 
     // TODO 移除C不兼容的strncpy_s
 
