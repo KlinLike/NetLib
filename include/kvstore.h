@@ -34,9 +34,17 @@ typedef struct kvs_array_item_s {
     char *val;
 } kvs_array_item_t;
 
+/*
+ * 说明：
+ * - 本数组实现采用“高水位边界（High-water mark）”模型，而非“当前非空元素计数”。
+ * - 边界用于限定遍历范围（0..boundary-1），中间删除会产生空洞但不缩小边界；
+ *   这样可避免删除中间元素后把末尾有效元素排除在遍历之外。
+ * - 插入时：若填充空洞，不增加边界；仅当在末尾追加元素时才提升边界。
+ * - 查询/删除时：通过判断 `key != NULL` 跳过空洞；需要顺序稳定时可改为“压缩填洞”。
+ */
 typedef struct kvs_array_s {
     kvs_array_item_t *table;
-    int count;
+    int count; /* 边界（High-water mark）：遍历上限，而非当前非空元素数量 */
 } kvs_array_t;
 
 // ========== 基础工具函数 (定义在 kvs_base.c) ==========
