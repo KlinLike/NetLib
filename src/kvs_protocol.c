@@ -25,10 +25,10 @@ int kvs_tokenizer(char* msg, char** tokens){
         return KVS_ERR_PARAM;
     }
     int idx = 0;
-    char* token = strtok(msg, " ");
+    char* token = strtok(msg, " \r\n");
     while(token != NULL){
         tokens[idx++] = token;
-        token = strtok(NULL, " "); // 后续调用传入NULL，继续分割
+        token = strtok(NULL, " \r\n"); // 后续调用传入NULL，继续分割
     }
     return idx;
 }

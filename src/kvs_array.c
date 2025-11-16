@@ -21,6 +21,7 @@ int kvs_array_create(kvs_array_t* ins){
     if(ins->table == NULL){
         return KVS_ERR_NOMEM;
     }
+    memset(ins->table, 0, sizeof(kvs_array_item_t) * KVS_ARRAY_SIZE);
 
     ins->count = 0;
     return KVS_OK;
@@ -141,7 +142,6 @@ int kvs_array_del(kvs_array_t* ins, char* key){
             ins->table[i].key = NULL;
             kvs_free(ins->table[i].val);
             ins->table[i].val = NULL;
-            ins->count--;
             return KVS_OK;
         }
     }
