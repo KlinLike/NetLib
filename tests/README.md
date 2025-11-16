@@ -278,17 +278,17 @@ Array默认容量为1024，在 `include/kvstore.h` 中修改：
 - 运行：`./tests/test_reactor.sh run`（端口 `8888`）
 - 清理：`./tests/test_reactor.sh clean`
 
-### 手动测试（本地/远程）
-- 本地：`python3 tests/echo_client.py 127.0.0.1 8888 "Hello Reactor"`
-- 远程：`python3 tests/echo_client.py <服务器IP> 8888 "Hello Reactor"`
-- 备用工具：`nc <服务器IP> 8888` 或 `telnet <服务器IP> 8888`，输入文本后回车
+### 手动测试（KVS+Reactor）
+- 本地：`python3 tests/kvs_reactor_client.py 127.0.0.1 2000`
+- 远程：`python3 tests/kvs_reactor_client.py <服务器IP> 2000`
+- 自定义前缀：`python3 tests/kvs_reactor_client.py <服务器IP> 2000 --prefix smoke`
 
 ### 预期输出
 - 客户端显示连接成功并收到与发送内容一致的回显（含结尾换行符）。
 - 服务器日志显示启动、监听、等待连接、收发数据等事件（取决于 `LOG_LEVEL`）。
 
 ### 说明
-- 服务器入口：`tests/test_reactor.c` 使用最小 `msg_handler` 将收到的数据原样拷贝到响应缓冲区并返回长度（`/root/MyGithub/NetLib/tests/test_reactor.c:7-17`, `/root/MyGithub/NetLib/tests/test_reactor.c:19-25`）。
-- 运行端口默认 `8888`，可在脚本中扩展支持自定义端口（当前固定）。
+- 服务器入口：`src/kvstore.c`，通过 `reactor_mainloop(port, 1, kvs_handler)` 注册 `kvs_handler`。
+- 运行端口默认 `2000`，可在启动时传参修改。
 
 *最后更新：2025-11-16*
