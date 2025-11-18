@@ -201,7 +201,10 @@ int init_server(unsigned short port){
         log_error("bind failed on port %d: %s", port, strerror(errno));
         return -1;
     }
-    listen(sockfd, 128);
+    
+    // 设置listen backlog为SOMAXCONN（系统最大值，通常为65535）
+    // 这对高并发场景至关重要！
+    listen(sockfd, SOMAXCONN);
     return sockfd;
 }
 
