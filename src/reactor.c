@@ -7,19 +7,39 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <errno.h>
 
-#define CONN_MAX 1024
-#define PORT_MAX 20
+// 支持百万级并发连接
+// 优化后: 每个连接占用约 512 字节 (BUF_LEN=256 * 2)
+// 内存需求:
+//   65536 (64K) 需要约 32MB
+//   131072 (128K) 需要约 64MB
+//   262144 (256K) 需要约 128MB  
+//   524288 (512K) 需要约 256MB ✅ 当前配置（适合1.6GB内存系统）
+//   1048576 (1M) 需要约 512MB（需要2GB+可用内存）
+#define CONN_MAX 524288   // 512K 连接（优化后需要 256MB）
+#define PORT_MAX 100      // 支持更多端口
 
-struct conn conn_list[CONN_MAX];
+// 使用动态分配以避免静态数组过大导致链接失败
+struct conn *conn_list = NULL;
 int epfd = 0;
 static msg_handler global_handler = NULL;
+
+// 性能统计
+static struct {
+    long long total_connections;   // 累计连接数
+    long long active_connections;  // 当前活跃连接数
+    long long total_requests;      // 累计请求数
+    long long total_bytes_recv;    // 累计接收字节数
+    long long total_bytes_sent;    // 累计发送字节数
+} server_stats = {0};
 
 // 函数声明
 int accept_cb(int fd);
 int recv_cb(int fd);
 int send_cb(int fd);
+void print_stats();
 
 // NOTE:
 //  reactor基于EPOLL实现
@@ -76,6 +96,10 @@ int accept_cb(int fd){
                    client_ip, ntohs(client_addr.sin_port), client_fd);
     
     event_register(client_fd, EPOLLIN);
+    
+    // 更新统计
+    server_stats.total_connections++;
+    server_stats.active_connections++;
 
     return 0;
 }
@@ -90,17 +114,21 @@ int recv_cb(int fd){
         log_info("Client disconnected (fd=%d)", fd);
         close(fd);
         epoll_ctl(epfd, EPOLL_CTL_DEL, fd, NULL);
+        server_stats.active_connections--;
         return 0;
     }
     else if(conn_list[fd].rbuff_len < 0) {
         log_error("Read failed (fd=%d): %s", fd, strerror(errno));
         close(fd);
         epoll_ctl(epfd, EPOLL_CTL_DEL, fd, NULL);
+        server_stats.active_connections--;
         return -1;
     }
     
     // 记录接收到的数据
     log_debug("Received %d bytes from fd=%d", conn_list[fd].rbuff_len, fd);
+    server_stats.total_bytes_recv += conn_list[fd].rbuff_len;
+    server_stats.total_requests++;
     // NOTE: 不需要清除conn_list[fd]中的数据，因为fd被重新分配后会覆盖
 
     // 清空写缓冲区
@@ -114,6 +142,7 @@ int recv_cb(int fd){
             log_error("Handler returned error (fd=%d, ret=%d)", fd, ret);
             close(fd);
             epoll_ctl(epfd, EPOLL_CTL_DEL, fd, NULL);
+            server_stats.active_connections--;
             return ret;
         }
         conn_list[fd].wbuff_len = ret;
@@ -134,6 +163,7 @@ int send_cb(int fd){
         log_warn("Client closed before sending data (fd=%d)", fd);
         close(fd);
         epoll_ctl(epfd, EPOLL_CTL_DEL, fd, NULL);
+        server_stats.active_connections--;
         return 0;
     }
 
@@ -142,10 +172,12 @@ int send_cb(int fd){
         log_error("Write failed (fd=%d): %s", fd, strerror(errno));
         close(fd);
         epoll_ctl(epfd, EPOLL_CTL_DEL, fd, NULL);
+        server_stats.active_connections--;
         return -1;
     }
     
     log_debug("Sent %d bytes to fd=%d", n, fd);
+    server_stats.total_bytes_sent += n;
     set_epoll_event(fd, EPOLLIN, 0);
     return n;
 }
@@ -173,10 +205,42 @@ int init_server(unsigned short port){
     return sockfd;
 }
 
+// 打印服务器统计信息
+void print_stats() {
+    log_server("=== Server Statistics ===");
+    log_server("Total Connections: %lld", server_stats.total_connections);
+    log_server("Active Connections: %lld", server_stats.active_connections);
+    log_server("Total Requests: %lld", server_stats.total_requests);
+    log_server("Total Bytes Recv: %lld (%.2f MB)", 
+               server_stats.total_bytes_recv, 
+               server_stats.total_bytes_recv / 1048576.0);
+    log_server("Total Bytes Sent: %lld (%.2f MB)", 
+               server_stats.total_bytes_sent,
+               server_stats.total_bytes_sent / 1048576.0);
+    if (server_stats.total_requests > 0) {
+        log_server("Avg Request Size: %.2f bytes", 
+                   (double)server_stats.total_bytes_recv / server_stats.total_requests);
+        log_server("Avg Response Size: %.2f bytes",
+                   (double)server_stats.total_bytes_sent / server_stats.total_requests);
+    }
+    log_server("========================");
+}
+
 int reactor_mainloop(unsigned short port_start, int port_count, msg_handler handler){
     if(port_start < 0 || port_count <= 0){
         log_error("Invalid port range(%d, %d)", port_start, port_start + port_count);
         return -1;
+    }
+    
+    // 动态分配连接数组
+    if (conn_list == NULL) {
+        conn_list = (struct conn*)calloc(CONN_MAX, sizeof(struct conn));
+        if (conn_list == NULL) {
+            log_error("Failed to allocate memory for connection list");
+            return -1;
+        }
+        log_info("Allocated %zu MB for connection list", 
+                 (CONN_MAX * sizeof(struct conn)) / (1024 * 1024));
     }
 
     global_handler = handler;

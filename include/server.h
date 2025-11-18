@@ -3,7 +3,11 @@
 #ifndef SERVER_H
 #define SERVER_H
 
-#define BUF_LEN 1024
+// 优化内存：减小缓冲区以支持更多并发连接
+// 256字节 × 2(读写缓冲) = 512字节/连接
+// 100万连接仅需 512MB 内存！
+// 注意：单个请求/响应不能超过 256 字节
+#define BUF_LEN 256
 
 #define ENABLE_HTTP         0
 #define ENABLE_WEBSOCKET    0
