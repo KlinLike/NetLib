@@ -197,18 +197,20 @@ EOF
 
 setup_pam_limits() {
     info "配置 PAM 限制模块..."
-    local pam_file="/etc/pam.d/common-session"
-    local required_line="session required pam_limits.so"
-    if ! grep -q "$required_line" "$pam_file" 2>/dev/null; then
-        if grep -q "session required" "$pam_file" 2>/dev/null; then
-            echo "$required_line" >> "$pam_file"
-            success "已添加 pam_limits.so 到 $pam_file"
+    local pam_files="/etc/pam.d/common-session /etc/pam.d/common-session-noninteractive"
+    for pam_file in $pam_files; do
+        [ -f "$pam_file" ] || continue
+        if ! grep -Eq '^[[:space:]]*session[[:space:]]+required[[:space:]]+pam_limits\.so' "$pam_file" 2>/dev/null; then
+            if grep -Eq '^[[:space:]]*session[[:space:]]+required' "$pam_file" 2>/dev/null; then
+                echo "session required pam_limits.so" >> "$pam_file"
+                success "已添加 pam_limits.so 到 $pam_file"
+            else
+                warning "无法找到 session required 行，请手动检查 $pam_file"
+            fi
         else
-            warning "无法找到 session required 行，请手动检查 $pam_file"
+            info "pam_limits.so 已在 $pam_file 中配置"
         fi
-    else
-        info "pam_limits.so 已在 $pam_file 中配置"
-    fi
+    done
 }
 
 # 内核网络参数
