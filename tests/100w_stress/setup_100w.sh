@@ -48,6 +48,13 @@ prompt_yes_no() {
     esac
 }
 
+prompt_interactive() {
+    if [ "${AUTO_MODE:-false}" = true ]; then
+        return 1
+    fi
+    prompt_yes_no "$1"
+}
+
 # 检查是否为root用户
 check_root() {
     if [ "$EUID" -ne 0 ]; then
@@ -113,7 +120,17 @@ DefaultLimitNOFILE=1048576
 EOF
             success "Systemd 限制已写入 /etc/systemd/system.conf.d/limits.conf"
         else
-            info "Systemd 限制已配置，跳过"
+            local current_limit=$(grep -E "^DefaultLimitNOFILE=" /etc/systemd/system.conf.d/limits.conf | tail -n1 | cut -d'=' -f2)
+            if [ "$current_limit" != "1048576" ]; then
+                if prompt_interactive "检测到 DefaultLimitNOFILE=$current_limit，是否更新为 1048576"; then
+                    sed -i -E 's/^DefaultLimitNOFILE=.*/DefaultLimitNOFILE=1048576/' /etc/systemd/system.conf.d/limits.conf
+                    success "Systemd DefaultLimitNOFILE 已更新为 1048576"
+                else
+                    info "保留现有 DefaultLimitNOFILE=$current_limit"
+                fi
+            else
+                info "Systemd 限制已配置，跳过"
+            fi
         fi
     fi
     local after_soft=$(ulimit -Sn)
@@ -121,6 +138,77 @@ EOF
     local after_filemax=$(cat /proc/sys/fs/file-max 2>/dev/null || echo 'N/A')
     success "变更后: soft=$after_soft, hard=$after_hard, fs.file-max=$after_filemax"
     success "文件描述符限制配置完成（永久生效）"
+
+    if grep -q "nofile" /etc/security/limits.conf 2>/dev/null; then
+        local line
+        line=$(grep -E "^\*\s+soft\s+nofile\s+" /etc/security/limits.conf | tail -n1)
+        if [ -n "$line" ]; then
+            local val=$(echo "$line" | awk '{print $4}')
+            if [ "$val" != "1048576" ]; then
+                if prompt_interactive "检测到 * soft nofile=$val，是否更新为 1048576"; then
+                    sed -i -E 's/^\*\s+soft\s+nofile\s+.*/\* soft nofile 1048576/' /etc/security/limits.conf
+                    success "已更新 * soft nofile=1048576"
+                else
+                    info "保留现有 * soft nofile=$val"
+                fi
+            fi
+        fi
+
+        line=$(grep -E "^\*\s+hard\s+nofile\s+" /etc/security/limits.conf | tail -n1)
+        if [ -n "$line" ]; then
+            local val=$(echo "$line" | awk '{print $4}')
+            if [ "$val" != "1048576" ]; then
+                if prompt_interactive "检测到 * hard nofile=$val，是否更新为 1048576"; then
+                    sed -i -E 's/^\*\s+hard\s+nofile\s+.*/\* hard nofile 1048576/' /etc/security/limits.conf
+                    success "已更新 * hard nofile=1048576"
+                else
+                    info "保留现有 * hard nofile=$val"
+                fi
+            fi
+        fi
+
+        line=$(grep -E "^root\s+soft\s+nofile\s+" /etc/security/limits.conf | tail -n1)
+        if [ -n "$line" ]; then
+            local val=$(echo "$line" | awk '{print $4}')
+            if [ "$val" != "1048576" ]; then
+                if prompt_interactive "检测到 root soft nofile=$val，是否更新为 1048576"; then
+                    sed -i -E 's/^root\s+soft\s+nofile\s+.*/root soft nofile 1048576/' /etc/security/limits.conf
+                    success "已更新 root soft nofile=1048576"
+                else
+                    info "保留现有 root soft nofile=$val"
+                fi
+            fi
+        fi
+
+        line=$(grep -E "^root\s+hard\s+nofile\s+" /etc/security/limits.conf | tail -n1)
+        if [ -n "$line" ]; then
+            local val=$(echo "$line" | awk '{print $4}')
+            if [ "$val" != "1048576" ]; then
+                if prompt_interactive "检测到 root hard nofile=$val，是否更新为 1048576"; then
+                    sed -i -E 's/^root\s+hard\s+nofile\s+.*/root hard nofile 1048576/' /etc/security/limits.conf
+                    success "已更新 root hard nofile=1048576"
+                else
+                    info "保留现有 root hard nofile=$val"
+                fi
+            fi
+        fi
+    fi
+}
+
+setup_pam_limits() {
+    info "配置 PAM 限制模块..."
+    local pam_file="/etc/pam.d/common-session"
+    local required_line="session required pam_limits.so"
+    if ! grep -q "$required_line" "$pam_file" 2>/dev/null; then
+        if grep -q "session required" "$pam_file" 2>/dev/null; then
+            echo "$required_line" >> "$pam_file"
+            success "已添加 pam_limits.so 到 $pam_file"
+        else
+            warning "无法找到 session required 行，请手动检查 $pam_file"
+        fi
+    else
+        info "pam_limits.so 已在 $pam_file 中配置"
+    fi
 }
 
 # 内核网络参数
@@ -132,9 +220,7 @@ setup_sysctl() {
     local before_fastopen=$(cat /proc/sys/net/ipv4/tcp_fastopen 2>/dev/null || echo 'N/A')
     local before_swappiness=$(cat /proc/sys/vm/swappiness 2>/dev/null || echo 'N/A')
     info "变更前: somaxconn=$before_somaxconn, syn_backlog=$before_syn_backlog, port_range=$before_port_range, fastopen=$before_fastopen, swappiness=$before_swappiness"
-    if grep -q "NetLib 百万并发优化配置" /etc/sysctl.conf 2>/dev/null; then
-        warning "内核参数已配置，跳过写入"
-    else
+    if ! grep -q "NetLib 百万并发优化配置" /etc/sysctl.conf 2>/dev/null; then
         cat >> /etc/sysctl.conf <<EOF
 
 # ====== NetLib 百万并发优化配置 ======
@@ -183,8 +269,57 @@ net.ipv4.ip_local_reserved_ports = 1024-2000
 vm.overcommit_memory = 1
 vm.swappiness = 10
 EOF
-        success "内核参数已写入 /etc/sysctl.conf"
+        success "已写入 NetLib 优化标记"
     fi
+    ensure_sysctl() {
+        local key="$1"
+        local desired="$2"
+        if grep -Eq "^${key}\s*=" /etc/sysctl.conf 2>/dev/null; then
+            local current=$(grep -E "^${key}\s*=" /etc/sysctl.conf | tail -n1 | sed -E "s/^${key}\s*=\s*//")
+            if [ "$current" != "$desired" ]; then
+                if prompt_interactive "检测到 ${key}=${current}，是否更新为 ${desired}"; then
+                    sed -i -E "s/^${key}\s*=\s*.*/${key} = ${desired}/" /etc/sysctl.conf
+                    success "已更新 ${key}=${desired}"
+                else
+                    info "保留现有 ${key}=${current}"
+                fi
+            fi
+        else
+            echo "${key} = ${desired}" >> /etc/sysctl.conf
+            success "已写入 ${key}=${desired}"
+        fi
+    }
+
+    ensure_sysctl fs.file-max 2097152
+    ensure_sysctl fs.nr_open 2097152
+    ensure_sysctl net.core.somaxconn 65535
+    ensure_sysctl net.core.netdev_max_backlog 65535
+    ensure_sysctl net.ipv4.tcp_max_syn_backlog 65535
+    ensure_sysctl net.ipv4.ip_local_port_range "1024 65535"
+    ensure_sysctl net.ipv4.tcp_tw_reuse 1
+    ensure_sysctl net.ipv4.tcp_fin_timeout 30
+    ensure_sysctl net.ipv4.tcp_max_tw_buckets 2000000
+    ensure_sysctl net.ipv4.tcp_rmem "4096 87380 16777216"
+    ensure_sysctl net.ipv4.tcp_wmem "4096 65536 16777216"
+    ensure_sysctl net.core.rmem_max 16777216
+    ensure_sysctl net.core.wmem_max 16777216
+    ensure_sysctl net.netfilter.nf_conntrack_max 2000000
+    ensure_sysctl net.nf_conntrack_max 2000000
+    ensure_sysctl net.ipv4.tcp_fastopen 3
+    ensure_sysctl net.ipv4.tcp_keepalive_time 600
+    ensure_sysctl net.ipv4.tcp_keepalive_probes 3
+    ensure_sysctl net.ipv4.tcp_keepalive_intvl 15
+    ensure_sysctl net.ipv4.tcp_syncookies 1
+    ensure_sysctl net.ipv4.tcp_max_orphans 262144
+    ensure_sysctl net.ipv4.tcp_orphan_retries 1
+    ensure_sysctl net.ipv4.tcp_retries2 8
+    ensure_sysctl net.ipv4.tcp_syn_retries 3
+    ensure_sysctl net.ipv4.tcp_synack_retries 3
+    ensure_sysctl net.ipv4.tcp_slow_start_after_idle 0
+    ensure_sysctl net.ipv4.tcp_mtu_probing 1
+    ensure_sysctl net.ipv4.ip_local_reserved_ports 1024-2000
+    ensure_sysctl vm.overcommit_memory 1
+    ensure_sysctl vm.swappiness 10
     info "应用内核参数到当前系统..."
     sysctl -p > /dev/null 2>&1 || true
     local after_somaxconn=$(cat /proc/sys/net/core/somaxconn 2>/dev/null || echo 'N/A')
@@ -203,6 +338,7 @@ setup_system() {
     set +e
     backup_config
     setup_file_limits
+    setup_pam_limits
     setup_sysctl
     local rc=$?
     set -e
@@ -373,6 +509,7 @@ EOF
 main() {
     case "${1:-interactive}" in
         interactive)
+            AUTO_MODE=false
             check_root
             show_welcome
             info "检查当前配置"
@@ -393,6 +530,7 @@ main() {
             show_complete
             ;;
         auto)
+            AUTO_MODE=true
             check_root
             show_welcome
             setup_system
