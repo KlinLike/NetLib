@@ -215,7 +215,7 @@ build_server() {
     make clean > /dev/null 2>&1 || true
     make -j$(nproc) > /tmp/netlib_make.log 2>&1 || true
     
-    if [ ! -f "./build/echo_server" ]; then
+    if [ ! -f "./build/server" ]; then
         echo -e "${COLOR_RED}错误: 服务器编译失败${COLOR_RESET}"
         tail -n 50 /tmp/netlib_make.log || true
         exit 1
@@ -245,7 +245,7 @@ start_server() {
     done
     
     # 启动服务器（监听多个端口）
-    ./build/echo_server $START_PORT $PORT_COUNT > /tmp/netlib_server.log 2>&1 &
+    ./build/server $START_PORT $PORT_COUNT > /tmp/netlib_server.log 2>&1 &
     SERVER_PID=$!
     
     # 等待服务器启动

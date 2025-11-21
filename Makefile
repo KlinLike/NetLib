@@ -8,8 +8,8 @@
 #   make clean    - 清理所有编译产物
 #
 # 运行服务器：
-#   ./build/echo_server <端口号>
-#   例如: ./build/echo_server 8888
+#   ./build/server <起始端口号>
+#   例如: ./build/server 2000
 #
 # ==============================================================================
 
@@ -21,7 +21,7 @@ LDFLAGS = -pthread
 SRC_DIR = src
 INC_DIR = include
 BUILD_DIR = build
-TARGET = $(BUILD_DIR)/echo_server
+TARGET = $(BUILD_DIR)/server
 
 # 源文件和目标文件
 SRCS = \
@@ -102,4 +102,3 @@ reactor-test: $(BUILD_DIR)
 .PHONY: reactor-test
 
 .PHONY: all clean release
-
