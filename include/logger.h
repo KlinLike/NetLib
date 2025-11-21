@@ -13,7 +13,7 @@
 
 // 默认日志级别 (可以在编译时通过 -DLOG_LEVEL=x 修改)
 #ifndef LOG_LEVEL
-#define LOG_LEVEL LOG_LEVEL_DEBUG
+#define LOG_LEVEL LOG_LEVEL_ERROR
 #endif
 
 // ANSI 颜色代码
@@ -78,21 +78,6 @@ static inline void get_timestamp(char *buf, size_t size) {
 #define log_error(fmt, ...) ((void)0)
 #endif
 
-// 特殊日志：连接相关
-#define log_connection(fmt, ...) do { \
-    char ts[32]; \
-    get_timestamp(ts, sizeof(ts)); \
-    printf(COLOR_CYAN "[%s CONN] " fmt COLOR_RESET "\n", ts, ##__VA_ARGS__); \
-    fflush(stdout); \
-} while(0)
-
-// 特殊日志：服务器启动
-#define log_server(fmt, ...) do { \
-    char ts[32]; \
-    get_timestamp(ts, sizeof(ts)); \
-    printf(COLOR_MAGENTA "[%s SERVER] " fmt COLOR_RESET "\n", ts, ##__VA_ARGS__); \
-    fflush(stdout); \
-} while(0)
+// 仅保留分级日志：debug/info/warn/error
 
 #endif // __LOGGER_H__
-

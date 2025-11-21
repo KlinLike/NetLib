@@ -132,17 +132,17 @@ int kvs_encode(struct conn* c){
 
 int main(int argc, char* argv[]){
     int port = 2000;
-    // 默认打开10个端口（先测试稳定性）
-    // 可根据需要调整：10/20/50/100
-    int port_count = 10;
+    int port_count = 20;
     
+    // TODO: port count 可配置
+
     // 解析命令行参数：起始端口号
     if(argc > 1){
         port = atoi(argv[1]);
     }
 
-    log_server("Starting kvstore server on ports %d-%d (%d ports)...", 
-               port, port + port_count - 1, port_count);
+    log_info("Starting kvstore server on ports %d-%d (%d ports)...", 
+             port, port + port_count - 1, port_count);
 
     // 初始化KV存储
     int init_ret = kvs_init();
