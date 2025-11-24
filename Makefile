@@ -99,6 +99,15 @@ reactor-test: $(BUILD_DIR)
 	$(CC) $(CFLAGS) -Iinclude tests/test_reactor.c src/reactor.c -o $(BUILD_DIR)/reactor_test $(LDFLAGS)
 	@echo "✓ 编译完成: $(BUILD_DIR)/reactor_test"
 
-.PHONY: reactor-test
+# 编译 100w 压力测试客户端
+100w: $(BUILD_DIR)
+	$(CC) -O2 -Wall -Wextra -std=c11 -D_POSIX_C_SOURCE=200112L tests/100w_stress/stress_client.c -o $(BUILD_DIR)/stress_client
+	@echo "✓ 编译完成: $(BUILD_DIR)/stress_client"
 
-.PHONY: all clean release
+# 编译带全量日志（DEBUG）
+log: CFLAGS += -DLOG_LEVEL=0
+log: clean all
+
+.PHONY: reactor-test log
+
+.PHONY: all clean release 100w
