@@ -208,9 +208,8 @@ int init_server(unsigned short port){
         return -1;
     }
     
-    // 设置listen backlog为SOMAXCONN（系统最大值，通常为65535）
-    // 这对高并发场景至关重要！
-    listen(sockfd, SOMAXCONN);
+    // NOTICE: 不要使用SOMAXCONN，因为它是一个编译时宏，依赖系统宏通常是错误的开始！！！
+    listen(sockfd, 65535);
     return sockfd;
 }
 
