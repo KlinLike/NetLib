@@ -231,17 +231,18 @@ fs.file-max = 2097152
 fs.nr_open = 2097152
 
 net.core.somaxconn = 65535
-net.core.netdev_max_backlog = 65535
-net.ipv4.tcp_max_syn_backlog = 65535
+net.core.netdev_max_backlog = 65536
+net.ipv4.tcp_max_syn_backlog = 65536
 
 net.ipv4.ip_local_port_range = 1024 65535
 
 net.ipv4.tcp_tw_reuse = 1
-net.ipv4.tcp_fin_timeout = 30
+net.ipv4.tcp_fin_timeout = 10
 net.ipv4.tcp_max_tw_buckets = 2000000
 
-net.ipv4.tcp_rmem = 4096 87380 16777216
-net.ipv4.tcp_wmem = 4096 65536 16777216
+net.ipv4.tcp_mem = 786432 1048576 1572864
+net.ipv4.tcp_rmem = 4096 4096 16777216
+net.ipv4.tcp_wmem = 4096 4096 16777216
 net.core.rmem_max = 16777216
 net.core.wmem_max = 16777216
 
@@ -295,14 +296,15 @@ EOF
     ensure_sysctl fs.file-max 2097152
     ensure_sysctl fs.nr_open 2097152
     ensure_sysctl net.core.somaxconn 65535
-    ensure_sysctl net.core.netdev_max_backlog 65535
-    ensure_sysctl net.ipv4.tcp_max_syn_backlog 65535
+    ensure_sysctl net.core.netdev_max_backlog 65536
+    ensure_sysctl net.ipv4.tcp_max_syn_backlog 65536
     ensure_sysctl net.ipv4.ip_local_port_range "1024 65535"
     ensure_sysctl net.ipv4.tcp_tw_reuse 1
-    ensure_sysctl net.ipv4.tcp_fin_timeout 30
+    ensure_sysctl net.ipv4.tcp_fin_timeout 10
     ensure_sysctl net.ipv4.tcp_max_tw_buckets 2000000
-    ensure_sysctl net.ipv4.tcp_rmem "4096 87380 16777216"
-    ensure_sysctl net.ipv4.tcp_wmem "4096 65536 16777216"
+    ensure_sysctl net.ipv4.tcp_mem "786432 1048576 1572864"
+    ensure_sysctl net.ipv4.tcp_rmem "4096 4096 16777216"
+    ensure_sysctl net.ipv4.tcp_wmem "4096 4096 16777216"
     ensure_sysctl net.core.rmem_max 16777216
     ensure_sysctl net.core.wmem_max 16777216
     ensure_sysctl net.netfilter.nf_conntrack_max 2000000
