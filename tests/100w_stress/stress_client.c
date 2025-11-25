@@ -1,7 +1,6 @@
-// NetLib C 压测客户端（10万并发首版）
 // 目标：分批非阻塞建连，维持长连接到 KVS 服务器，统计成功数
 // 用法示例：
-//   ./stress_client --host 127.0.0.1 --port-range 2000-2099 --connections 100000 --batch 10000 --interval-ms 100
+//   ./stress_client --host 127.0.0.1 --port-range 2000-2099 --connections 100000 --batch 2000 --interval-ms 100
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -77,11 +76,26 @@ int main(int argc, char **argv){
     }
 
     int created = 0, established = 0, failed = 0;
+    int fail_getaddrinfo = 0, fail_socket = 0, fail_nonblock = 0, fail_epoll_add = 0;
+    int fail_connect_immediate = 0, fail_connect_async = 0;
+
+    struct epoll_event *events_buf = NULL;
+    int events_cap = 65536;
+    events_buf = (struct epoll_event*)malloc(sizeof(struct epoll_event) * events_cap);
+    if(!events_buf){
+        events_cap = 8192;
+        events_buf = (struct epoll_event*)malloc(sizeof(struct epoll_event) * events_cap);
+        if(!events_buf){
+            perror("malloc events_buf");
+            return 1;
+        }
+    }
 
     while(created < conn_target){
         int to_create = batch;
         if(created + to_create > conn_target) to_create = conn_target - created;
 
+        int pending_batch = 0;
         for(int k=0; k<to_create; k++){
             int idx = created + k;
             int port = port_start + (idx % port_count);
@@ -90,20 +104,21 @@ int main(int argc, char **argv){
             snprintf(port_str, sizeof(port_str), "%d", port);
 
             if(getaddrinfo(host, port_str, &hints, &res) != 0){
-                failed++; continue;
+                failed++; fail_getaddrinfo++; continue;
             }
             int fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-            if(fd < 0){ failed++; freeaddrinfo(res); continue; }
-            if(set_nonblock(fd) < 0){ failed++; close(fd); freeaddrinfo(res); continue; }
+            if(fd < 0){ failed++; fail_socket++; freeaddrinfo(res); continue; }
+            if(set_nonblock(fd) < 0){ failed++; fail_nonblock++; close(fd); freeaddrinfo(res); continue; }
             int rc = connect(fd, res->ai_addr, res->ai_addrlen);
             if(rc == 0){
                 conns[idx].fd = fd; conns[idx].connected = 1; conns[idx].port = port; established++;
             } else if(errno == EINPROGRESS){
                 conns[idx].fd = fd; conns[idx].connected = 0; conns[idx].port = port;
-                struct epoll_event ev; ev.events = EPOLLOUT; ev.data.u64 = (uint64_t)idx;
-                if(epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ev) < 0){ failed++; close(fd); conns[idx].fd=-1; }
+                struct epoll_event ev; ev.events = EPOLLOUT | EPOLLERR | EPOLLHUP; ev.data.u64 = (uint64_t)idx;
+                if(epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ev) < 0){ failed++; fail_epoll_add++; close(fd); conns[idx].fd=-1; }
+                else { pending_batch++; }
             } else {
-                failed++; close(fd);
+                failed++; fail_connect_immediate++; close(fd);
             }
             freeaddrinfo(res); res=NULL;
         }
@@ -111,20 +126,21 @@ int main(int argc, char **argv){
         created += to_create;
         fprintf(stdout, "[Batch] created=%d/%d, established=%d, failed=%d\n", created, conn_target, established, failed);
 
-        struct epoll_event events[8192];
-        int rounds = 5; // 若干轮尝试完成握手
-        while(rounds--){
-            int nfds = epoll_wait(epfd, events, 8192, 50);
+        while(pending_batch > 0){
+            int cap = pending_batch < events_cap ? pending_batch : events_cap;
+            int nfds = epoll_wait(epfd, events_buf, cap, 1000);
+            if(nfds <= 0) break;
             for(int i=0;i<nfds;i++){
-                int idx = (int)events[i].data.u64;
+                int idx = (int)events_buf[i].data.u64;
                 int fd = conns[idx].fd;
                 int err=0; socklen_t len=sizeof(err);
                 if(getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &len) == 0 && err == 0){
                     conns[idx].connected = 1; established++;
                     epoll_ctl(epfd, EPOLL_CTL_DEL, fd, NULL);
                 } else {
-                    failed++; close(fd); conns[idx].fd=-1;
+                    failed++; fail_connect_async++; close(fd); conns[idx].fd=-1;
                 }
+                pending_batch--;
             }
         }
 
@@ -132,7 +148,32 @@ int main(int argc, char **argv){
         nanosleep(&ts, NULL);
     }
 
+    // Final drain for any remaining pending connects
+    int pending_total = 0;
+    for(int i=0;i<conn_target;i++){
+        if(conns[i].fd>0 && conns[i].connected==0) pending_total++;
+    }
+    while(pending_total > 0){
+        int cap = pending_total < events_cap ? pending_total : events_cap;
+        int nfds = epoll_wait(epfd, events_buf, cap, 1000);
+        if(nfds <= 0) break;
+        for(int i=0;i<nfds;i++){
+            int idx = (int)events_buf[i].data.u64;
+            int fd = conns[idx].fd;
+            int err=0; socklen_t len=sizeof(err);
+            if(getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &len) == 0 && err == 0){
+                conns[idx].connected = 1; established++;
+                epoll_ctl(epfd, EPOLL_CTL_DEL, fd, NULL);
+            } else {
+                failed++; fail_connect_async++; close(fd); conns[idx].fd=-1;
+            }
+            pending_total--;
+        }
+    }
+
     fprintf(stdout, "[Summary] target=%d, established=%d, failed=%d\n", conn_target, established, failed);
+    fprintf(stdout, "[FailBreakdown] getaddrinfo=%d socket=%d nonblock=%d epoll_add=%d connect_immediate=%d connect_async=%d\n",
+            fail_getaddrinfo, fail_socket, fail_nonblock, fail_epoll_add, fail_connect_immediate, fail_connect_async);
 
     // 简单维持：睡眠一段时间保持连接（可按需扩展发送心跳）
     sleep(60);
@@ -141,6 +182,7 @@ int main(int argc, char **argv){
         if(conns[i].fd>0) close(conns[i].fd);
     }
     close(epfd);
+    if(events_buf) free(events_buf);
     free(conns);
     return 0;
 }
