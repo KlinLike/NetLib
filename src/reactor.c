@@ -10,10 +10,15 @@
 #include <stdlib.h>
 #include <errno.h>
 
+// 单机最大连接数上限（用于分配 conn_list 大小）
 #define CONN_MAX 1000000
+// 支持监听的最大端口数量（reactor_mainloop 启动时使用）
 #define PORT_MAX 100
+// 每累计 N 个新连接打印一次聚合统计
 #define LOG_CONN_EVERY 1000
+// 每累计 N 个请求打印一次聚合统计
 #define LOG_REQ_EVERY 1000
+// epoll_wait 每轮最多返回的事件条目
 #define MAX_EVENTS 8192
 
 // 使用动态分配以避免静态数组过大导致链接失败
@@ -94,9 +99,11 @@ int accept_cb(int fd){
         return -1;
     }
     
-    // 更新统计
     server_stats.total_connections++;
     server_stats.active_connections++;
+    if (server_stats.total_connections % LOG_CONN_EVERY == 0) {
+        print_stats();
+    }
 
     return 0;
 }
@@ -129,6 +136,9 @@ int recv_cb(int fd){
     
     server_stats.total_bytes_recv += conn_list[fd]->rbuff_len;
     server_stats.total_requests++;
+    if (server_stats.total_requests % LOG_REQ_EVERY == 0) {
+        print_stats();
+    }
     // NOTE: 不需要清除conn_list[fd]中的数据，因为fd被重新分配后会覆盖
 
     // 清空写缓冲区
