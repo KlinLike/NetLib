@@ -9,9 +9,9 @@
 #   - 创建并启用 8GB 交换空间，配置永久挂载与 swappiness=10
 #   - 在每一步打印关键参数的变更前后值，并最终统一验证
 # 使用：
-#   - 交互式：sudo tests/100w_stress/setup_100w.sh
-#   - 无交互：sudo tests/100w_stress/setup_100w.sh auto
-#   - 仅验证：sudo tests/100w_stress/setup_100w.sh verify
+#   - 交互式：sudo tests/setup_system.sh
+#   - 无交互：sudo tests/setup_system.sh auto
+#   - 仅验证：sudo tests/setup_system.sh verify
 # 注意：需要 root 权限，部分设置在重启或重新登录后完全生效
 # ==============================================================================
 

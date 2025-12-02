@@ -2,19 +2,30 @@
 # NetLib Makefile
 # ==============================================================================
 #
-# 使用说明：
-#   make          - 编译项目（开发模式，包含调试信息和所有日志）
-#   make release  - 编译发布版本（O2优化，隐藏DEBUG日志）
+# 编译选项：
+#   make          - 开发模式（-g 调试信息，INFO 日志级别）
+#   make release  - 发布模式（-O2 优化，只输出 ERROR 日志，最高性能）
+#   make log      - 调试模式（输出所有 DEBUG 日志）
 #   make clean    - 清理所有编译产物
 #
+# 测试工具：
+#   make qps      - 编译 QPS 性能测试客户端
+#   make c1000k   - 编译 C1000K 压力测试客户端
+#
+# 日志级别（可通过 LOG_LEVEL=x 覆盖）：
+#   0 = DEBUG   显示所有日志
+#   1 = INFO    隐藏 DEBUG（默认）
+#   2 = WARN    只显示 WARN 和 ERROR
+#   3 = ERROR   只显示 ERROR（release 默认）
+#
 # 运行服务器：
-#   ./build/server <起始端口号>
-#   例如: ./build/server 2000
+#   ./build/server <起始端口> <端口数量>
+#   例如: ./build/server 2000 20    # 监听 2000-2019
 #
 # ==============================================================================
 
 CC = gcc
-CFLAGS = -Wall -g -Iinclude
+CFLAGS_BASE = -Wall -Iinclude
 LDFLAGS = -pthread
 
 # 目录定义
@@ -49,7 +60,14 @@ OBJS = \
 # -DLOG_LEVEL=2  # WARN  (只显示WARNING和ERROR)
 # -DLOG_LEVEL=3  # ERROR (只显示ERROR)
 
-all: CFLAGS += -DLOG_LEVEL=1
+# 默认日志级别（可被目标覆盖）
+LOG_LEVEL ?= 1
+OPT_FLAGS ?= -g
+
+# 最终 CFLAGS
+CFLAGS = $(CFLAGS_BASE) $(OPT_FLAGS) -DLOG_LEVEL=$(LOG_LEVEL)
+
+# 默认编译
 all: $(BUILD_DIR) $(TARGET)
 
 $(BUILD_DIR):
@@ -87,9 +105,9 @@ clean:
 	rm -rf $(BUILD_DIR)
 	@echo "✓ 清理完成"
 
-# 发布版本（隐藏DEBUG日志）
-release: CFLAGS += -DLOG_LEVEL=1 -O2
-release: clean all
+# 发布版本（只输出ERROR日志，最高性能）
+release: clean
+	$(MAKE) LOG_LEVEL=3 OPT_FLAGS=-O2 all
 
 run: all
 	$(TARGET) 2000
@@ -100,15 +118,20 @@ reactor-test: $(BUILD_DIR)
 	$(CC) $(CFLAGS) -Iinclude tests/test_reactor.c src/reactor.c -o $(BUILD_DIR)/reactor_test $(LDFLAGS)
 	@echo "✓ 编译完成: $(BUILD_DIR)/reactor_test"
 
-# 编译 100w 压力测试客户端
-100w: $(BUILD_DIR)
-	$(CC) -O2 -Wall -Wextra -std=c11 -D_POSIX_C_SOURCE=200112L tests/100w_stress/stress_client.c -o $(BUILD_DIR)/stress_client
+# 编译 C1000K 压力测试客户端
+c1000k: $(BUILD_DIR)
+	$(CC) -O2 -Wall -Wextra -std=c11 -D_POSIX_C_SOURCE=200112L tests/c1000k/stress_client.c -o $(BUILD_DIR)/stress_client
 	@echo "✓ 编译完成: $(BUILD_DIR)/stress_client"
 
+# 编译 QPS 测试客户端
+qps: $(BUILD_DIR)
+	$(CC) -O2 -Wall -Wextra -pthread tests/qps/qps_client.c -o $(BUILD_DIR)/qps_client
+	@echo "✓ 编译完成: $(BUILD_DIR)/qps_client"
+
 # 编译带全量日志（DEBUG）
-log: CFLAGS += -DLOG_LEVEL=0
-log: clean all
+log: clean
+	$(MAKE) LOG_LEVEL=0 all
 
 .PHONY: reactor-test log
 
-.PHONY: all clean release 100w
+.PHONY: all clean release c1000k qps

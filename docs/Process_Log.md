@@ -72,7 +72,7 @@ EXIST key          -> 返回: EXIST / NO EXIST
 
 ### KVS 性能测试（优先级：高）
 - C1000K DONE
-- QPS
+- QPS：逐步增加连接数，观察 QPS 的变化趋势
 - P99延迟 100k时99%的请求是不是还能在10ms内返回？如果不能，是为什么？
 
 ### HTTP 与 WebSocket 接入（优先级：中）

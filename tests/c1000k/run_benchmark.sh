@@ -187,7 +187,7 @@ setup_system() {
     
     echo -e "${COLOR_BLUE}[1/5] 配置系统参数...${COLOR_RESET}"
     
-    local setup_script="./tests/100w_stress/setup_100w.sh"
+    local setup_script="./tests/setup_system.sh"
     if [ ! -f "$setup_script" ]; then
         echo -e "${COLOR_RED}错误: 找不到 $setup_script${COLOR_RESET}"
         exit 1
@@ -222,7 +222,7 @@ build_server() {
     fi
     
     # 编译10w并发客户端
-    gcc -O2 -pthread -o ./build/stress_client ./tests/100w_stress/stress_client.c
+    gcc -O2 -pthread -o ./build/stress_client ./tests/c1000k/stress_client.c
     if [ $? -ne 0 ] || [ ! -f "./build/stress_client" ]; then
         echo -e "${COLOR_RED}错误: 客户端编译失败${COLOR_RESET}"
         exit 1

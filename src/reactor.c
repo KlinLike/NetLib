@@ -15,9 +15,9 @@
 // 支持监听的最大端口数量（reactor_mainloop 启动时使用）
 #define PORT_MAX 100
 // 每累计 N 个新连接打印一次聚合统计
-#define LOG_CONN_EVERY 1000
+#define LOG_CONN_EVERY 10000
 // 每累计 N 个请求打印一次聚合统计
-#define LOG_REQ_EVERY 1000
+#define LOG_REQ_EVERY 100000
 // epoll_wait 每轮最多返回的事件条目
 #define MAX_EVENTS 8192
 

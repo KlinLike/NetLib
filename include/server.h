@@ -3,10 +3,10 @@
 #ifndef SERVER_H
 #define SERVER_H
 
-// 优化内存：仅建连场景，可将缓冲区缩至最小
-// 1字节 × 2(读写缓冲) = 2字节/连接
-// 注意：此配置不适合任何实际收发数据
-#define BUF_LEN 1
+// 缓冲区大小配置
+// C1000K测试：设为1（最小内存占用，不收发数据）
+// QPS测试：设为1024或更大（需要实际收发数据）
+#define BUF_LEN 1024
 
 #define ENABLE_HTTP         0
 #define ENABLE_WEBSOCKET    0
