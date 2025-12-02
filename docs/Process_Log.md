@@ -72,8 +72,9 @@ EXIST key          -> 返回: EXIST / NO EXIST
 
 ### KVS 性能测试（优先级：高）
 - C1000K DONE
-- QPS：逐步增加连接数，观察 QPS 的变化趋势
-- P99延迟 100k时99%的请求是不是还能在10ms内返回？如果不能，是为什么？
+- QPS DONE
+- P99延迟 100k时99%的请求是不是还能在10ms内返回？如果不能，是为什么？ PASS
+-> 分析QPS和不同数据引擎的测试结果后就跳过性能测试，因为继续好像没有意义了
 
 ### HTTP 与 WebSocket 接入（优先级：中）
 - 在 `reactor_mainloop` 通过注册不同 `msg_handler` 支持多协议，保持低耦合。

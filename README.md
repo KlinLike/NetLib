@@ -90,10 +90,6 @@ make run      # 编译并运行
 
 见 [docs/LICENSE](docs/LICENSE)
 
-## 🤝 贡献
-
-欢迎提交 Issue 和 Pull Request！
-
 ---
 
 **项目状态**: 🚧 开发中  
