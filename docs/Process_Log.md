@@ -71,10 +71,9 @@ EXIST key          -> 返回: EXIST / NO EXIST
 ## 后续计划（2025-11-16）
 
 ### KVS 性能测试（优先级：高）
-- 建立端到端性能基准：吞吐（QPS）与延迟分布（P50/P95/P99）。
-- 命令覆盖：Array/RBTree/Hash 的 `SET/GET/MOD/DEL/EXIST` 横向对比。
-- 规模与并发：不同数据规模与并发连接数的性能曲线。
-- 报告输出：CSV/Markdown 结果与可视化脚本，支持回归比较。
+- C1000K DONE
+- QPS
+- P99延迟 100k时99%的请求是不是还能在10ms内返回？如果不能，是为什么？
 
 ### HTTP 与 WebSocket 接入（优先级：中）
 - 在 `reactor_mainloop` 通过注册不同 `msg_handler` 支持多协议，保持低耦合。
