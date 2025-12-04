@@ -120,8 +120,14 @@ int kvs_init(){
     return KVS_OK;
 }
 
+// 这个函数暂时不必优化，比起网络IO的开销，一次额外的函数调用开销几乎可以忽略不计
 int kvs_handle(struct conn* c){
     c->wbuff_len = kvs_handler(c->rbuff, c->rbuff_len, c->wbuff);
+    c->wbuff_sent = 0;
+    c->should_close = 0;
+    if(c->protocol == PROTO_UNKNOWN){
+        c->protocol = PROTO_KVS;
+    }
     return c->wbuff_len;
 }
 
@@ -151,5 +157,7 @@ int main(int argc, char* argv[]){
         return -1;
     }
 
-    return reactor_mainloop(port, port_count, kvs_handler);
+    // 注册分发器
+    extern int dispatcher_handler(struct conn*);
+    return reactor_mainloop(port, port_count, dispatcher_handler);
 }

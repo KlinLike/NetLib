@@ -8,10 +8,18 @@
 // QPS测试：设为1024或更大（需要实际收发数据）
 #define BUF_LEN 1024
 
-#define ENABLE_HTTP         0
+#define ENABLE_HTTP         1
 #define ENABLE_WEBSOCKET    0
 #define ENABLE_KVSTORE      1
 #define ENABLE_ECHO         0
+
+// 协议类型枚举（内容级分发）
+typedef enum {
+    PROTO_UNKNOWN = 0,
+    PROTO_HTTP    = 1,
+    PROTO_KVS     = 2,
+    PROTO_WS      = 3
+} protocol_t;
 
 typedef int (*EVENT_CALLBACK)(int fd);
 // 工作流程：
@@ -19,7 +27,6 @@ typedef int (*EVENT_CALLBACK)(int fd);
 // 2. 调用msg_handler处理业务逻辑，填充wbuff
 // 3. 调用send_cb发送数据到客户端
 // msg_handler是实现业务逻辑的函数，也是操作哈希、红黑树等数据结构的函数
-typedef int (*msg_handler)(char *msg, int length, char *response);
 
 struct conn {
     int fd;
@@ -28,7 +35,8 @@ struct conn {
     int rbuff_len;
 
     char wbuff[BUF_LEN];
-    int wbuff_len;
+    int wbuff_len;  // 需要发送的buffer长度
+    int wbuff_sent; // 已经发送的buffer长度
 
     EVENT_CALLBACK send_cb;
     union {
@@ -38,6 +46,8 @@ struct conn {
     } action_cb;
 
     int status;
+    protocol_t protocol;
+    int should_close;
 
 #if ENABLE_WEBSOCKET
     // WebSocket的数据帧包括 帧头 + 可选的掩码 + 有效载荷（也就是实际数据）
@@ -47,6 +57,8 @@ struct conn {
     char mask[4];   // 掩码
 #endif
 };
+
+typedef int (*msg_handler)(struct conn *c);
 
 // 函数声明
 int reactor_mainloop(unsigned short port_start, int port_count, msg_handler handler);

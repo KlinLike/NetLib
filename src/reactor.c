@@ -146,8 +146,7 @@ int recv_cb(int fd){
     conn_list[fd]->wbuff_len = 0;
 
     if (global_handler != NULL) {
-        int ret = global_handler(conn_list[fd]->rbuff, conn_list[fd]->rbuff_len,
-                                 conn_list[fd]->wbuff);
+        int ret = global_handler(conn_list[fd]);
         if (ret < 0) {
             log_error("Handler returned error (fd=%d, ret=%d)", fd, ret);
             close(fd);
@@ -181,8 +180,25 @@ int send_cb(int fd){
         return 0;
     }
 
-    int n = write(fd, conn_list[fd]->wbuff, conn_list[fd]->wbuff_len);
-    if(n < 0) {
+    int remain = conn_list[fd]->wbuff_len - conn_list[fd]->wbuff_sent;
+    if(remain <= 0){ // if 发送完毕
+        if(conn_list[fd]->should_close){
+            // 关闭连接
+            close(fd);
+            epoll_ctl(epfd, EPOLL_CTL_DEL, fd, NULL);
+            server_stats.active_connections--;
+            free(conn_list[fd]);
+            conn_list[fd] = NULL;
+            return 0;
+        } else {
+            // 继续监听可读事件
+            set_epoll_event(fd, EPOLLIN, 0);
+            return 0;
+        }
+    }
+
+    int writeed_len = write(fd, conn_list[fd]->wbuff + conn_list[fd]->wbuff_sent, remain);
+    if(writeed_len < 0) { // if 写入出错
         log_error("Write failed (fd=%d): %s", fd, strerror(errno));
         close(fd);
         epoll_ctl(epfd, EPOLL_CTL_DEL, fd, NULL);
@@ -191,11 +207,26 @@ int send_cb(int fd){
         conn_list[fd] = NULL;
         return -1;
     }
-    
-    
-    server_stats.total_bytes_sent += n;
-    set_epoll_event(fd, EPOLLIN, 0);
-    return n;
+    server_stats.total_bytes_sent += writeed_len;
+    conn_list[fd]->wbuff_sent += writeed_len;
+
+    // 如果还有剩余，继续保持写状态
+    if(conn_list[fd]->wbuff_sent < conn_list[fd]->wbuff_len){
+        set_epoll_event(fd, EPOLLOUT, 0);
+        return writeed_len;
+    }
+
+    if(conn_list[fd]->should_close){
+        close(fd);
+        epoll_ctl(epfd, EPOLL_CTL_DEL, fd, NULL);
+        server_stats.active_connections--;
+        free(conn_list[fd]);
+        conn_list[fd] = NULL;
+        return writeed_len;
+    } else {
+        set_epoll_event(fd, EPOLLIN, 0);
+        return writeed_len;
+    }
 }
 
 // 打开一个服务器套接字并监听端口，返回套接字fd
