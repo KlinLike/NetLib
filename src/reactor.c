@@ -93,6 +93,7 @@ int accept_cb(int fd){
     char client_ip[INET_ADDRSTRLEN];
     inet_ntop(AF_INET, &client_addr.sin_addr, client_ip, INET_ADDRSTRLEN);
     
+    // event_register中设置了回调函数
     if (event_register(client_fd, EPOLLIN) != 0) {
         log_error("event_register failed: client_fd=%d out of range", client_fd);
         close(client_fd);

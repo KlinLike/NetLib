@@ -1,5 +1,6 @@
 #include "server.h"
 #include <string.h>
+#include <stdio.h>
 
 static const char* HELLO_BODY = "<html><body>Hello</body></html>";
 

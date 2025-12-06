@@ -40,6 +40,7 @@ SRCS = \
     $(SRC_DIR)/kvstore.c \
     $(SRC_DIR)/dispatcher.c \
     $(SRC_DIR)/http.c \
+    $(SRC_DIR)/websocket.c \
     $(SRC_DIR)/echo.c \
     $(SRC_DIR)/kvs_protocol.c \
     $(SRC_DIR)/kvs_base.c \
@@ -51,6 +52,7 @@ OBJS = \
     $(BUILD_DIR)/kvstore.o \
     $(BUILD_DIR)/dispatcher.o \
     $(BUILD_DIR)/http.o \
+    $(BUILD_DIR)/websocket.o \
     $(BUILD_DIR)/echo.o \
     $(BUILD_DIR)/kvs_protocol.o \
     $(BUILD_DIR)/kvs_base.o \
@@ -91,6 +93,9 @@ $(BUILD_DIR)/dispatcher.o: $(SRC_DIR)/dispatcher.c $(INC_DIR)/server.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/http.o: $(SRC_DIR)/http.c $(INC_DIR)/server.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(BUILD_DIR)/websocket.o: $(SRC_DIR)/websocket.c $(INC_DIR)/server.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(BUILD_DIR)/echo.o: $(SRC_DIR)/echo.c $(INC_DIR)/server.h $(INC_DIR)/logger.h

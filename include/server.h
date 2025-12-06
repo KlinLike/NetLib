@@ -8,11 +8,6 @@
 // QPS测试：设为1024或更大（需要实际收发数据）
 #define BUF_LEN 1024
 
-#define ENABLE_HTTP         1
-#define ENABLE_WEBSOCKET    0
-#define ENABLE_KVSTORE      1
-#define ENABLE_ECHO         0
-
 // 协议类型枚举（内容级分发）
 typedef enum {
     PROTO_UNKNOWN = 0,
@@ -49,13 +44,12 @@ struct conn {
     protocol_t protocol;
     int should_close;
 
-#if ENABLE_WEBSOCKET
+    // WebSocket 相关字段
     // WebSocket的数据帧包括 帧头 + 可选的掩码 + 有效载荷（也就是实际数据）
     // rbuff存储的是完整数据帧，payload指向实际数据，这样不用每次都计算偏移
-    // 所有客户端到服务器的数据都需要进行掩码处理，所有从服务器到客户端的数据不能进行掩码处理，掩码处理使用XOR运算
-    char* payload;  // 有效载荷
+    // 所有客户端到服务器的数据都需要进行掩码处理，所有从服务器到客户端的数据不能进行掩码处理
+    char* payload;  // 有效载荷指针
     char mask[4];   // 掩码
-#endif
 };
 
 typedef int (*msg_handler)(struct conn *c);
@@ -63,31 +57,15 @@ typedef int (*msg_handler)(struct conn *c);
 // 函数声明
 int reactor_mainloop(unsigned short port_start, int port_count, msg_handler handler);
 
-// _handle 
-// 功能：负责解析和处理业务逻辑，将处理结果放到wbuffer中
-// 返回值：处理后的数据长度
-// _encode 
-// 功能：负责将wbuffer中的数据编码为响应数据，并发送给客户端，需要处理协议头、分包、压缩等额外工作。处理后的数据还是保存在wbuffer中
-// 返回值：处理后的数据长度
+// _handle: 负责解析和处理业务逻辑，将处理结果放到wbuffer中，返回数据长度
+// _encode: 负责将wbuffer中的数据编码为响应数据（协议头、分包、压缩等）
 
-#if ENABLE_HTTP
+// 协议处理函数
 int http_handle(struct conn *c);
-int http_encode(struct conn *c);
-#endif
-
-#if ENABLE_WEBSOCKET
 int ws_handle(struct conn *c);
-int ws_encode(struct conn *c);
-#endif
-
-#if ENABLE_KVSTORE
 int kvs_handle(struct conn *c);
-int kvs_encode(struct conn *c);
-#endif
 
-#if ENABLE_ECHO
-int echo_handle(struct conn *c);
-int echo_encode(struct conn *c);
-#endif
+// 协议分发器
+int dispatcher_handler(struct conn *c);
 
 #endif // SERVER_H
