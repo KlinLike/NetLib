@@ -2,21 +2,22 @@
 # NetLib Makefile
 # ==============================================================================
 #
-# 编译选项：
-#   make          - 开发模式（-g 调试信息，INFO 日志级别）
-#   make release  - 发布模式（-O2 优化，只输出 ERROR 日志，最高性能）
-#   make log      - 调试模式（输出所有 DEBUG 日志）
-#   make clean    - 清理所有编译产物
+# 编译选项（按日志级别）：
+#   make          - 默认编译（INFO 级别）
+#   make debug    - DEBUG 级别，显示所有日志
+#   make info     - INFO 级别
+#   make warn     - WARN 级别，只显示警告和错误
+#   make error    - ERROR 级别，只显示错误
+#   make release  - 生产环境（ERROR + O2 优化）
 #
 # 测试工具：
 #   make qps      - 编译 QPS 性能测试客户端
 #   make c1000k   - 编译 C1000K 压力测试客户端
 #
-# 日志级别（可通过 LOG_LEVEL=x 覆盖）：
-#   0 = DEBUG   显示所有日志
-#   1 = INFO    隐藏 DEBUG（默认）
-#   2 = WARN    只显示 WARN 和 ERROR
-#   3 = ERROR   只显示 ERROR（release 默认）
+# 其他：
+#   make clean    - 清理所有编译产物
+#   make run      - 编译并运行（端口 2000）
+#   make help     - 显示帮助信息
 #
 # 运行服务器：
 #   ./build/server <起始端口> <端口数量>
@@ -120,14 +121,58 @@ clean:
 	rm -rf $(BUILD_DIR)
 	@echo "✓ 清理完成"
 
-# 发布版本（只输出ERROR日志，最高性能）
+# ==============================================================================
+# 日志级别编译目标（简单好记）
+# ==============================================================================
+# make debug   - DEBUG 级别，显示所有日志
+# make info    - INFO 级别，隐藏 DEBUG（默认）
+# make warn    - WARN 级别，只显示警告和错误
+# make error   - ERROR 级别，只显示错误
+# make release - ERROR 级别 + O2 优化（生产环境）
+# ==============================================================================
+
+debug: clean
+	@echo "编译 DEBUG 模式（显示所有日志）"
+	$(MAKE) LOG_LEVEL=0 all
+
+info: clean
+	@echo "编译 INFO 模式（默认）"
+	$(MAKE) LOG_LEVEL=1 all
+
+warn: clean
+	@echo "编译 WARN 模式"
+	$(MAKE) LOG_LEVEL=2 all
+
+error: clean
+	@echo "编译 ERROR 模式"
+	$(MAKE) LOG_LEVEL=3 all
+
 release: clean
+	@echo "编译 RELEASE 模式（ERROR + O2 优化）"
 	$(MAKE) LOG_LEVEL=3 OPT_FLAGS=-O2 all
 
 run: all
 	$(TARGET) 2000
 
-# 仅测试 Reactor：编译并运行一个最小化的 echo handler
+# 显示帮助
+help:
+	@echo "NetLib 编译命令："
+	@echo "  make          - 默认编译（INFO 级别）"
+	@echo "  make debug    - DEBUG 级别，显示所有日志"
+	@echo "  make info     - INFO 级别"
+	@echo "  make warn     - WARN 级别"
+	@echo "  make error    - ERROR 级别"
+	@echo "  make release  - 生产环境（ERROR + O2）"
+	@echo ""
+	@echo "测试工具："
+	@echo "  make c1000k   - 编译压力测试客户端"
+	@echo "  make qps      - 编译 QPS 测试客户端"
+	@echo ""
+	@echo "其他："
+	@echo "  make clean    - 清理编译产物"
+	@echo "  make run      - 编译并运行（端口 2000）"
+
+# 仅测试 Reactor
 reactor-test: CFLAGS += -DLOG_LEVEL=0
 reactor-test: $(BUILD_DIR)
 	$(CC) $(CFLAGS) -Iinclude tests/test_reactor.c src/reactor.c -o $(BUILD_DIR)/reactor_test $(LDFLAGS)
@@ -143,10 +188,4 @@ qps: $(BUILD_DIR)
 	$(CC) -O2 -Wall -Wextra -pthread tests/qps/qps_client.c -o $(BUILD_DIR)/qps_client
 	@echo "✓ 编译完成: $(BUILD_DIR)/qps_client"
 
-# 编译带全量日志（DEBUG）
-log: clean
-	$(MAKE) LOG_LEVEL=0 all
-
-.PHONY: reactor-test log
-
-.PHONY: all clean release c1000k qps
+.PHONY: all clean debug info warn error release run help reactor-test c1000k qps
